@@ -3,7 +3,7 @@
   <section class="home">
     <header class="home-header">
       <div>
-        <h1 class="home-title">SGCF</h1>
+        <h1 class="home-title">Configracion de la informacion</h1>
         <p class="home-subtitle">
           Sistema Gestor de Control Financiero · Selecciona un módulo para comenzar.
         </p>
@@ -12,7 +12,9 @@
 
     <div class="modules-grid">
       <RouterLink to="/alumnos" class="module-card">
-        <div class="module-icon">👩‍🎓</div>
+        <div class="module-icon">
+          <span class="material-symbols-outlined">school</span>
+        </div>
         <h2 class="module-title">Alumnos</h2>
         <p class="module-desc">
           Gestiona el registro, actualización y seguimiento de los alumnos.
@@ -20,10 +22,82 @@
       </RouterLink>
 
       <RouterLink to="/carreras" class="module-card">
-        <div class="module-icon">📚</div>
+        <div class="module-icon">
+          <span class="material-symbols-outlined">menu_book</span>
+        </div>
         <h2 class="module-title">Carreras</h2>
         <p class="module-desc">
           Administra las carreras disponibles y su duración en semestres.
+        </p>
+      </RouterLink>
+
+      <RouterLink to="/cuentas" class="module-card">
+        <div class="module-icon">
+          <span class="material-symbols-outlined">credit_card</span>
+        </div>
+        <h2 class="module-title">Cuentas por cobrar</h2>
+        <p class="module-desc">
+          Controla los adeudos por alumno, concepto y ciclo escolar.
+        </p>
+      </RouterLink>
+
+      <RouterLink to="/metodos-pago" class="module-card">
+        <div class="module-icon">
+          <span class="material-symbols-outlined">payments</span>
+        </div>
+        <h2 class="module-title">Métodos de pago</h2>
+        <p class="module-desc">
+          Define y administra las formas de pago aceptadas en caja.
+        </p>
+      </RouterLink>
+
+      <RouterLink to="/ciclos-escolares" class="module-card">
+        <div class="module-icon">
+          <span class="material-symbols-outlined">event</span>
+        </div>
+        <h2 class="module-title">Ciclos escolares</h2>
+        <p class="module-desc">
+          Define y gestiona los ciclos activos y anteriores.
+        </p>
+      </RouterLink>
+
+      <RouterLink to="/usuarios" class="module-card">
+        <div class="module-icon">
+          <span class="material-symbols-outlined">group</span>
+        </div>
+        <h2 class="module-title">Usuarios</h2>
+        <p class="module-desc">
+          Administra las cuentas de usuario y sus permisos.
+        </p>
+      </RouterLink>
+
+      <RouterLink to="/roles" class="module-card">
+        <div class="module-icon">
+          <span class="material-symbols-outlined">admin_panel_settings</span>
+        </div>
+        <h2 class="module-title">Roles</h2>
+        <p class="module-desc">
+          Gestiona los roles y niveles de acceso de los usuarios.
+        </p>
+      </RouterLink>
+
+      <RouterLink to="/observaciones" class="module-card">
+        <div class="module-icon">
+          <span class="material-symbols-outlined">notes</span>
+        </div>
+        <h2 class="module-title">Observaciones</h2>
+        <p class="module-desc">
+          Registra y revisa las observaciones relacionadas con los alumnos.
+        </p>
+      </RouterLink>
+
+      <RouterLink to="/conceptos" class="module-card">
+        <div class="module-icon">
+          <span class="material-symbols-outlined">sell</span>
+        </div>
+        <h2 class="module-title">Conceptos</h2>
+        <p class="module-desc">
+          Define los conceptos de cobro y sus características.
         </p>
       </RouterLink>
     </div>
@@ -37,6 +111,8 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
 }
 
 .home-header {
@@ -46,8 +122,9 @@
 }
 
 .home-title {
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: 1.9rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   color: #202124;
 }
 
@@ -91,8 +168,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
   margin-bottom: 0.2rem;
+}
+
+/* Estilo "googlesco" para Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  font-size: 22px;
+  color: #1a73e8;
 }
 
 .module-title {
