@@ -1,5 +1,12 @@
 <template>
   <section class="page">
+    <!-- Botón para volver a Inicio -->
+    <div class="back-to-home">
+        <RouterLink to="/inicio" class="btn btn-secondary">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Volver a Inicio
+        </RouterLink>
+    </div>
     <!-- Header -->
     <header class="page-header">
       <div>

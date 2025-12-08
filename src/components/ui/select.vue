@@ -1,3 +1,4 @@
+<!-- src/components/ui/select.vue -->
 <template>
   <div
     class="g-select-wrapper"
@@ -107,17 +108,23 @@ const isOpen = ref(false);
 const search = ref('');
 const highlightedIndex = ref<number>(-1);
 
-// Sincroniza el texto mostrado con el valor seleccionado
+// Opción seleccionada (si el padre manda un valor)
 const selectedOption = computed(() =>
   props.options.find((o) => o.value === props.modelValue) ?? null,
 );
 
-// Cuando cambia el valor o las opciones, actualizamos el texto si está cerrado
+// Sincroniza el texto mostrado con el valor seleccionado SOLO cuando está cerrado
 watch(
   () => [props.modelValue, props.options],
-  () => {
+  ([model]) => {
     if (!isOpen.value) {
-      search.value = selectedOption.value?.label ?? '';
+      // 🔹 Si no hay valor (null / undefined / ''), dejamos el input vacío
+      //    y se ve el placeholder "Selecciona..."
+      if (model === null || model === undefined || model === '') {
+        search.value = '';
+      } else {
+        search.value = selectedOption.value?.label ?? '';
+      }
     }
   },
   { immediate: true },
@@ -136,6 +143,10 @@ const filteredOptions = computed(() => {
 function open() {
   if (disabled.value) return;
   isOpen.value = true;
+
+  // Al abrir limpiamos el texto para mostrar TODAS las opciones
+  search.value = '';
+
   highlightedIndex.value = filteredOptions.value.findIndex(
     (o) => o.value === props.modelValue,
   );
@@ -144,6 +155,14 @@ function open() {
 function close() {
   isOpen.value = false;
   highlightedIndex.value = -1;
+
+  // Al cerrar, si hay valor, mostramos su etiqueta;
+  // si NO hay valor, dejamos el input vacío → placeholder visible
+  if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') {
+    search.value = '';
+  } else {
+    search.value = selectedOption.value?.label ?? '';
+  }
 }
 
 // Click en el contenedor
@@ -151,6 +170,8 @@ function onContainerClick() {
   if (disabled.value) return;
   if (!isOpen.value) {
     open();
+  } else {
+    close();
   }
 }
 
@@ -190,8 +211,6 @@ function selectHighlighted() {
 
   const idx = highlightedIndex.value;
   const opt = filteredOptions.value[idx];
-
-  // 🔐 aquí TypeScript ya sabe que no es undefined
   if (!opt) return;
 
   selectOption(opt);
@@ -318,12 +337,12 @@ onBeforeUnmount(() => {
   transform: rotate(180deg);
 }
 
-/* Lista */
+/* Lista ABAJO del input */
 .g-select-list {
   position: absolute;
   z-index: 10;
   left: 0;
-  right: 0;
+  top: 100%;          /* siempre debajo */
   margin-top: 0.25rem;
   padding: 0.25rem 0;
   border-radius: 12px;
@@ -356,7 +375,7 @@ onBeforeUnmount(() => {
   background-color: #e8f0fe;
 }
 
-/* Fade */
+/* Fade hacia abajo */
 .g-select-fade-enter-active,
 .g-select-fade-leave-active {
   transition: opacity 0.12s ease, transform 0.12s ease;
@@ -365,7 +384,7 @@ onBeforeUnmount(() => {
 .g-select-fade-enter-from,
 .g-select-fade-leave-to {
   opacity: 0;
-  transform: translateY(-2px);
+  transform: translateY(4px);
 }
 
 /* Disabled */

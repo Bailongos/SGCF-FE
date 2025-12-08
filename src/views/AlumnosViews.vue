@@ -1,6 +1,13 @@
 <!-- src/views/AlumnosView.vue -->
 <template>
     <section class="page">
+        <!-- Botón para volver a Inicio -->
+        <div class="back-to-home">
+            <RouterLink to="/inicio" class="btn btn-secondary">
+                <span class="material-symbols-outlined">arrow_back</span>
+                Volver a Inicio
+            </RouterLink>
+        </div>
         <!-- Header estilo Google -->
         <header class="page-header">
             <div>
@@ -35,8 +42,8 @@
 import { ref, onMounted, watch } from 'vue';
 import * as XLSX from 'xlsx';
 
-import AlumnosForm from '../components/alumnos/AlumnosForm.vue';
-import AlumnosTable from '../components/alumnos/AlumnosTable.vue';
+import AlumnosForm from '../components/formulario/AlumnosForm.vue';
+import AlumnosTable from '../components/formulario/AlumnosTable.vue';
 import AlumnosBulkModal from '../components/modal/AlumnosBulkModal.vue';
 
 import {
@@ -80,7 +87,7 @@ const createEmptyForm = (defaultCarreraId: number = 1): AlumnoCreate & { activo:
     nombre_completo: '',
     email_institucional: '',
     telefono_contacto: '',
-    id_carrera: defaultCarreraId,
+    id_carrera: null as any,
     semestre_actual: 1,
     activo: true,
 });
@@ -117,24 +124,18 @@ async function loadAlumnos() {
 }
 
 async function loadCarreras() {
-    try {
-        loadingCarreras.value = true;
-        const data = await getCarreras();
-        carreras.value = data;
+  try {
+    loadingCarreras.value = true;
+    const data = await getCarreras();
+    carreras.value = data;
 
-        if (
-            !isEditing.value &&
-            carreras.value.length > 0 &&
-            !carreras.value.some((c) => c.id_carrera === form.value.id_carrera)
-        ) {
-            form.value.id_carrera = carreras.value[0].id_carrera;
-        }
-    } catch (e) {
-        console.error(e);
-    } finally {
-        loadingCarreras.value = false;
-    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loadingCarreras.value = false;
+  }
 }
+
 
 // ---------- CRUD Alumno ----------
 async function onSubmit() {
@@ -401,9 +402,9 @@ watch(showBulkModal, (value) => {
 
 onMounted(async () => {
     await Promise.all([loadAlumnos(), loadCarreras()]);
-    if (carreras.value.length) {
-        form.value.id_carrera = carreras.value[0].id_carrera;
-    }
+    // if (carreras.value.length) {
+    //     form.value.id_carrera = carreras.value[0].id_carrera;
+    // }
 });
 </script>
 

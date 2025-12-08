@@ -1,163 +1,132 @@
 <!-- src/components/alumnos/AlumnosForm.vue -->
 <template>
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <h3 class="card-title">
-          {{ isEditing ? 'Editar alumno' : 'Nuevo alumno' }}
-        </h3>
-        <p class="card-subtitle">
-          Completa los campos obligatorios para
-          {{ isEditing ? 'actualizar el registro seleccionado' : 'registrar un nuevo alumno' }}.
-        </p>
-      </div>
+  <GenericForm
+    :title="isEditing ? 'Editar alumno' : 'Nuevo alumno'"
+    :subtitle="formSubtitle"
+    :submit-label="isEditing ? 'Actualizar alumno' : 'Guardar alumno'"
+    cancel-label="Cancelar edición"
+    :show-cancel="isEditing"
+    :submitting="loading"
+    @submit="onSubmitWrapper"
+    @cancel="onCancelWrapper"
+    class="alumnos-form"
+  >
+    <!-- Chip "Editando" en el header derecho -->
+    <template #header-right>
       <span
         v-if="isEditing && form.matricula"
         class="chip chip-primary"
       >
         Editando: {{ form.matricula }}
       </span>
-    </div>
+    </template>
 
-    <form @submit.prevent="onSubmit" class="form">
-      <div class="form-grid">
-        <!-- Matrícula -->
-        <GoogleInput
-          v-model="form.matricula"
-          label="Matrícula *"
-          placeholder="Ej. 190123"
-          :disabled="isEditing"
-          required
-        />
+    <!-- 👇 Campos del formulario (slot por defecto del GenericForm) -->
 
-        <!-- Nombre completo -->
-        <GoogleInput
-          v-model="form.nombre_completo"
-          label="Nombre completo *"
-          placeholder="Nombre y apellidos"
-          required
-        />
-
-        <!-- Email institucional -->
-        <GoogleInput
-          v-model="form.email_institucional"
-          label="Email institucional"
-          type="email"
-          placeholder="nombre@uadec.mx"
-        />
-
-        <!-- Teléfono -->
-        <GoogleInput
-          v-model="form.telefono_contacto"
-          label="Teléfono"
-          placeholder="871-000-0000"
-        />
-
-        <!-- Carrera (select googlesco) -->
-        <GoogleSelect
-          v-model="form.id_carrera"
-          label="Carrera *"
-          :options="carreraOptions"
-          placeholder="Selecciona una carrera"
-          :searchable="true"
-          required
-        />
-        <small
-          v-if="!carreras.length"
-          class="hint"
-        >
-          No hay carreras cargadas. Ve al módulo de Carreras para crear algunas.
-        </small>
-
-        <!-- Semestre -->
-        <GoogleInput
-          v-model="form.semestre_actual"
-          label="Semestre *"
-          type="number"
-          min="1"
-          required
-        />
-
-        <!-- Activo -->
-        <label class="field field-checkbox">
-          <input v-model="form.activo" type="checkbox" />
-          <span>Activo</span>
-        </label>
-      </div>
-
-      <div class="form-actions">
-        <div class="form-actions-left">
-          <GoogleButton
-            type="submit"
-            :loading="loading"
-            :disabled="loading"
-          >
-            <span v-if="isEditing">Actualizar alumno</span>
-            <span v-else>Guardar alumno</span>
-          </GoogleButton>
-
-          <GoogleButton
-            v-if="isEditing"
-            type="button"
-            variant="text"
-            color="#1a73e8"
-            @click="onCancelClick"
-          >
-            Cancelar edición
-          </GoogleButton>
-        </div>
-
-        <div class="form-actions-right">
-          <GoogleButton
-            type="button"
-            variant="text"
-            @click="emit('download-template')"
-          >
-            ⬇️ Plantilla Excel
-          </GoogleButton>
-
-          <GoogleButton
-            type="button"
-            variant="outlined"
-            @click="emit('open-bulk-modal')"
-          >
-            📤 Carga masiva
-          </GoogleButton>
-        </div>
-      </div>
-    </form>
-
-    <!-- Toast de éxito -->
-    <GoogleToast
-      v-model="toastVisible"
-      :message="toastMessage"
-      type="success"
+    <!-- Matrícula -->
+    <GoogleInput
+      v-model="form.matricula"
+      label="Matrícula *"
+      placeholder="Ej. 190123"
+      :disabled="isEditing"
+      required
     />
 
-    <!-- Confirm para cancelar edición -->
-    <GoogleConfirmDialog
-      v-model="confirmVisible"
-      type="danger"
-      title="¿Cancelar edición?"
-      message="Los cambios no guardados en el alumno se perderán."
-      confirmText="Sí, cancelar"
-      cancelText="Seguir editando"
-      @confirm="confirmCancelEdit"
+    <!-- Nombre completo -->
+    <GoogleInput
+      v-model="form.nombre_completo"
+      label="Nombre completo *"
+      placeholder="Nombre y apellidos"
+      required
     />
-  </div>
+
+    <!-- Email institucional -->
+    <GoogleInput
+      v-model="form.email_institucional"
+      label="Email institucional"
+      type="email"
+      placeholder="nombre@uadec.mx"
+    />
+
+    <!-- Teléfono -->
+    <GoogleInput
+      v-model="form.telefono_contacto"
+      label="Teléfono"
+      placeholder="871-000-0000"
+    />
+
+    <!-- Carrera (select googlesco) -->
+    <GoogleSelect
+      v-model="form.id_carrera"
+      label="Carrera *"
+      :options="carreraOptions"
+      placeholder="Selecciona una carrera"
+      required
+    />
+    <small
+      v-if="!carreras.length"
+      class="hint"
+    >
+      No hay carreras cargadas. Ve al módulo de Carreras para crear algunas.
+    </small>
+
+    <!-- Semestre -->
+    <GoogleInput
+      v-model="form.semestre_actual"
+      label="Semestre *"
+      type="number"
+      min="1"
+      required
+    />
+
+    <!-- Activo -->
+    <label class="field field-checkbox">
+      <input v-model="form.activo" type="checkbox" />
+      <span>Activo</span>
+    </label>
+
+    <!-- Acciones extra a la derecha (plantilla y carga masiva) -->
+    <template #actions-right>
+      <GoogleButton
+        type="button"
+        variant="text"
+        @click="emit('download-template')"
+      >
+        ⬇️ Plantilla Excel
+      </GoogleButton>
+
+      <GoogleButton
+        type="button"
+        variant="outlined"
+        @click="emit('open-bulk-modal')"
+      >
+        📤 Carga masiva
+      </GoogleButton>
+
+      <GoogleButton
+        type="submit"
+        :loading="loading"
+        :disabled="loading"
+      >
+        <span v-if="isEditing">Actualizar alumno</span>
+        <span v-else>Guardar alumno</span>
+      </GoogleButton>
+    </template>
+  </GenericForm>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type { AlumnoCreate } from '../../services/alumnos';
 import type { Carrera } from '../../services/carreras';
 
-// 🧩 UI “googlesca”
+// Shell de formulario genérico
+import GenericForm from '../formulario/formulario.vue';
+
+// Inputs/UI
 import GoogleInput from '../ui/input.vue';
 import GoogleSelect from '../ui/select.vue';
 import GoogleButton from '../ui/button.vue';
-import GoogleToast from '../modal/toast.vue';
-import GoogleConfirmDialog from '../modal/alert.vue';
 
 type AlumnoFormModel = AlumnoCreate & { activo: boolean };
 
@@ -175,6 +144,13 @@ const emit = defineEmits<{
   (e: 'open-bulk-modal'): void;
 }>();
 
+// Texto del subtítulo
+const formSubtitle = computed(() =>
+  props.isEditing
+    ? 'Completa los campos obligatorios para actualizar el registro seleccionado.'
+    : 'Completa los campos obligatorios para registrar un nuevo alumno.',
+);
+
 // Options para el GoogleSelect
 const carreraOptions = computed(() =>
   props.carreras.map((c) => ({
@@ -183,91 +159,18 @@ const carreraOptions = computed(() =>
   })),
 );
 
-// Toast
-const toastVisible = ref(false);
-const toastMessage = ref('Alumno guardado con éxito');
-
-// Confirm dialog para cancelar edición
-const confirmVisible = ref(false);
-
-function onSubmit() {
+// Wrappers para conectar GenericForm con el padre (vista)
+function onSubmitWrapper() {
   emit('submit');
-  // Si quieres mostrar el toast siempre que se dispara submit:
-  toastVisible.value = true;
 }
 
-function onCancelClick() {
-  confirmVisible.value = true;
-}
-
-function confirmCancelEdit() {
-  confirmVisible.value = false;
+function onCancelWrapper() {
   emit('cancel-edit');
 }
 </script>
 
 <style scoped>
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #202124;
-}
-
-.card-subtitle {
-  font-size: 0.85rem;
-  color: #5f6368;
-}
-
-.form {
-  margin-top: 0.5rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.field-label {
-  color: #5f6368;
-}
-
-.field-input {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  background-color: #ffffff;
-}
-
-.field-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
-}
+/* Solo estilos específicos de este form, el card y layout los pone GenericForm+SectionCard */
 
 .field-checkbox {
   display: flex;
@@ -275,27 +178,13 @@ function confirmCancelEdit() {
   align-items: center;
   gap: 0.4rem;
   margin-top: 1.4rem;
+  font-size: 0.85rem;
 }
 
 .hint {
   font-size: 0.75rem;
   color: #a0a4a8;
   margin-top: 0.15rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.form-actions-left,
-.form-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 .chip {

@@ -1,6 +1,13 @@
 <!-- src/views/CarrerasView.vue -->
 <template>
   <section class="page">
+    <!-- Botón para volver a Inicio -->
+    <div class="back-to-home">
+        <RouterLink to="/inicio" class="btn btn-secondary">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Volver a Inicio
+        </RouterLink>
+    </div>
     <header class="page-header">
       <div>
         <h2 class="page-title">Carreras</h2>

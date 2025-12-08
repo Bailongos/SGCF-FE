@@ -1,31 +1,47 @@
 <!-- src/components/alumnos/AlumnosTable.vue -->
 <template>
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <h3 class="card-title">Listado de alumnos</h3>
-        <p class="card-subtitle">
-          Busca, edita o elimina registros existentes.
-        </p>
-      </div>
-      <div class="card-actions">
-        <input
+  <SectionCard
+    class="alumnos-table"
+    icon="group"
+    :title="titleToShow"
+    :subtitle="subtitleToShow"
+    density="comfortable"
+  >
+    <!-- Zona derecha del header: filtros y acciones -->
+    <template #header-right>
+      <div class="table-actions">
+        <!-- Buscador -->
+        <GoogleInput
           v-model="localSearch"
-          class="search-input"
+          class="table-search-input"
+          size="sm"
           placeholder="Buscar por nombre, matrícula o email..."
         />
-        <button
-          class="btn btn-text"
-          @click="$emit('reload')"
+
+        <!-- Filtro por carrera (opcional, local) -->
+        <GoogleSelect
+          v-model="localCarreraFilter"
+          class="table-career-select"
+          :options="carreraOptions"
+          placeholder="Todas las carreras"
+          size="sm"
+        />
+
+        <!-- Botón recargar -->
+        <GoogleButton
+          variant="text"
           :disabled="loading"
+          @click="$emit('reload')"
         >
           Recargar
-        </button>
+        </GoogleButton>
       </div>
-    </div>
+    </template>
 
+    <!-- Error -->
     <p v-if="error" class="error">{{ error }}</p>
 
+    <!-- Tabla -->
     <div v-if="filteredAlumnos.length" class="table-wrapper">
       <table class="table">
         <thead>
@@ -83,13 +99,19 @@
     <p v-else class="empty">
       No hay alumnos que coincidan con el filtro.
     </p>
-  </div>
+  </SectionCard>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { Alumno } from '../../services/alumnos';
 import type { Carrera } from '../../services/carreras';
+
+// UI googlesca
+import SectionCard from '../layout/sideCard.vue';
+import GoogleInput from '../ui/input.vue';
+import GoogleButton from '../ui/button.vue';
+import GoogleSelect from '../ui/select.vue';
 
 const props = withDefaults(defineProps<{
   alumnos: Alumno[];
@@ -97,12 +119,18 @@ const props = withDefaults(defineProps<{
   loading: boolean;
   error: string | null;
   search: string;
+
+  // Para reutilizar el componente en otros lados
+  title?: string;
+  subtitle?: string;
 }>(), {
   alumnos: () => [],
   carreras: () => [],
   loading: false,
   error: null,
   search: '',
+  title: 'Listado de alumnos',
+  subtitle: 'Busca, edita o elimina registros existentes.',
 });
 
 const emit = defineEmits<{
@@ -112,21 +140,47 @@ const emit = defineEmits<{
   (e: 'update:search', value: string): void;
 }>();
 
+const titleToShow = computed(() => props.title);
+const subtitleToShow = computed(() => props.subtitle);
+
+// v-model:search desde el padre
 const localSearch = computed({
   get: () => props.search ?? '',
   set: (val: string) => emit('update:search', val),
 });
+
+// filtro local por carrera
+const localCarreraFilter = ref<string | number | null>(null);
 
 function getCarreraNombre(id: number): string {
   const c = props.carreras.find((c) => c.id_carrera === id);
   return c ? c.nombre : `ID ${id}`;
 }
 
+// opciones para el select de carrera
+const carreraOptions = computed(() => [
+  { value: '', label: 'Todas las carreras' },
+  ...props.carreras.map((c) => ({
+    value: c.id_carrera,
+    label: c.nombre,
+  })),
+]);
+
 const filteredAlumnos = computed(() => {
   const term = (localSearch.value || '').toLowerCase().trim();
-  if (!term) return props.alumnos;
+  const carreraFilter = localCarreraFilter.value;
 
-  return props.alumnos.filter((a) => {
+  let list = props.alumnos;
+
+  // filtrar por carrera si hay filtro
+  if (carreraFilter !== null && carreraFilter !== '') {
+    const targetId = Number(carreraFilter);
+    list = list.filter((a) => a.id_carrera === targetId);
+  }
+
+  if (!term) return list;
+
+  return list.filter((a) => {
     return (
       a.matricula.toLowerCase().includes(term) ||
       a.nombre_completo.toLowerCase().includes(term) ||
@@ -137,50 +191,18 @@ const filteredAlumnos = computed(() => {
 </script>
 
 <style scoped>
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #202124;
-}
-
-.card-subtitle {
-  font-size: 0.85rem;
-  color: #5f6368;
-}
-
-.card-actions {
+.table-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.search-input {
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  font-size: 0.85rem;
-  min-width: 260px;
-  outline: none;
+.table-search-input {
+  min-width: 240px;
 }
 
-.search-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
+.table-career-select {
+  min-width: 200px;
 }
 
 .table-wrapper {
@@ -247,26 +269,6 @@ const filteredAlumnos = computed(() => {
   background: #f1f3f4;
   border-color: #e0e0e0;
   color: #5f6368;
-}
-
-.btn {
-  border-radius: 999px;
-  border: none;
-  font-size: 0.9rem;
-  padding: 0.45rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-text {
-  background: transparent;
-  color: #1a73e8;
-}
-
-.btn-text:hover {
-  background: rgba(26, 115, 232, 0.08);
 }
 
 .icon-button {
