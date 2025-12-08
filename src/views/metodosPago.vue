@@ -2,9 +2,10 @@
   <section class="page">
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
-        <RouterLink to="/inicio" class="btn btn-secondary">
-            <span class="material-symbols-outlined">arrow_back</span>
-            Volver a Inicio
+        <RouterLink to="/inicio" custom v-slot="{ navigate }">
+            <GoogleButton @click="navigate" color="#1a73e8" label="Volver a Inicio">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </GoogleButton>
         </RouterLink>
     </div>
     <!-- Header estilo Google -->
@@ -159,6 +160,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+
+import GoogleButton from '../components/ui/button.vue';
 import {
   getMetodosPago,
   createMetodoPago,

@@ -3,9 +3,10 @@
     <section class="page">
         <!-- Botón para volver a Inicio -->
         <div class="back-to-home">
-            <RouterLink to="/inicio" class="btn btn-secondary">
-                <span class="material-symbols-outlined">arrow_back</span>
-                Volver a Inicio
+            <RouterLink to="/inicio" custom v-slot="{ navigate }">
+                <GoogleButton @click="navigate" color="#1a73e8" label="Volver a Inicio">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                </GoogleButton>
             </RouterLink>
         </div>
         <!-- Header estilo Google -->
@@ -45,6 +46,9 @@ import * as XLSX from 'xlsx';
 import AlumnosForm from '../components/formulario/AlumnosForm.vue';
 import AlumnosTable from '../components/formulario/AlumnosTable.vue';
 import AlumnosBulkModal from '../components/modal/AlumnosBulkModal.vue';
+
+
+import GoogleButton from '../components/ui/button.vue';
 
 import {
     getAlumnos,
