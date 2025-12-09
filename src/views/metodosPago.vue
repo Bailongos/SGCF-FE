@@ -1,13 +1,16 @@
+<!-- src/views/MetodosPagoView.vue (o MétodosDePagoView.vue, como lo tengas en el router) -->
 <template>
-  <section class="page">
+  <section class="page g-page-animate">
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
-        <RouterLink to="/inicio" custom v-slot="{ navigate }">
-            <GoogleButton @click="navigate" color="#1a73e8" label="Volver a Inicio">
-                <span class="material-symbols-outlined">arrow_back</span>
-            </GoogleButton>
-        </RouterLink>
+      <RouterLink to="/inicio" custom v-slot="{ navigate }">
+        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Volver a inicio
+        </GoogleButton>
+      </RouterLink>
     </div>
+
     <!-- Header estilo Google -->
     <header class="page-header">
       <div>
@@ -20,148 +23,77 @@
         <span class="chip chip-soft">
           Total: <strong>{{ metodos.length }}</strong>
         </span>
+
+        <GoogleButton
+          size="sm"
+          color="#1a73e8"
+          @click="openCreateForm"
+        >
+          <span class="material-symbols-outlined">add</span>
+          Nuevo método
+        </GoogleButton>
       </div>
     </header>
 
-    <!-- Card formulario -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">
-            {{ isEditing ? 'Editar método de pago' : 'Nuevo método de pago' }}
-          </h3>
-          <p class="card-subtitle">
-            Define nombres claros para identificar fácilmente cada forma de pago
-            (efectivo, tarjeta, transferencia, etc.).
-          </p>
-        </div>
-        <span
-          v-if="isEditing && editingId !== null"
-          class="chip chip-primary"
-        >
-          Editando: #{{ editingId }}
-        </span>
-      </div>
+    <!-- Tabla genérica googlesca -->
+    <GoogleTable
+      :rows="metodos"
+      :columns="metodosColumns"
+      rowKey="id_metodo"
+      :loading="loadingList"
+      :error="error"
+      v-model:search="search"
+      title="Listado de métodos de pago"
+      subtitle="Edita o elimina métodos existentes. Solo se recomienda eliminar métodos que no tengan movimientos asociados."
+      icon="payments"
+      :showReload="true"
+      :useDefaultActions="true"
+      :searchKeys="['nombre']"
+      :successMessage="tableSuccessMessage"
+      emptyMessage="No hay métodos que coincidan con el filtro."
+      @reload="loadMetodos"
+      @edit="onEdit"
+      @delete="onDelete"
+    />
 
-      <form @submit.prevent="onSubmit" class="form">
-        <div class="form-grid single">
-          <label class="field">
-            <span class="field-label">Nombre del método *</span>
-            <input
-              v-model="form.nombre"
-              required
-              class="field-input"
-              placeholder="Ej. Efectivo, Tarjeta Débito/Crédito, Transferencia"
-            />
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <div class="form-actions-left">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="loadingSave"
-            >
-              <span v-if="loadingSave">Guardando...</span>
-              <span v-else>
-                {{ isEditing ? 'Actualizar método' : 'Guardar método' }}
-              </span>
-            </button>
-
-            <button
-              v-if="isEditing"
-              type="button"
-              class="btn btn-text"
-              @click="onCancelEdit"
-            >
-              Cancelar edición
-            </button>
-          </div>
-
-          <div class="form-actions-right">
-            <button
-              type="button"
-              class="btn btn-text"
-              @click="loadMetodos"
-              :disabled="loadingList"
-            >
-              Recargar
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <p v-if="error" class="error">{{ error }}</p>
-    </div>
-
-    <!-- Card listado -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">Listado de métodos de pago</h3>
-          <p class="card-subtitle">
-            Edita o elimina métodos existentes. Solo se recomienda eliminar métodos que no tengan movimientos asociados.
-          </p>
-        </div>
-        <div class="card-actions">
-          <input
-            v-model="search"
-            class="search-input"
-            placeholder="Buscar por nombre..."
+    <!-- Modal Crear / Editar método -->
+    <GoogleModal
+      v-model="showFormModal"
+      :icon="isEditing ? 'edit' : 'payments'"
+      :title="isEditing ? 'Editar método de pago' : 'Nuevo método de pago'"
+      subtitle="Define nombres claros para identificar fácilmente cada forma de pago (efectivo, tarjeta, transferencia, etc.)."
+      maxWidth="520px"
+      density="comfortable"
+      :confirmLoading="loadingSave"
+      :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
+      cancelText="Cancelar"
+      @confirm="handleFormSubmit"
+      @cancel="handleCancelForm"
+    >
+      <form @submit.prevent="handleFormSubmit" class="metodo-form">
+        <div class="metodo-form-grid">
+          <GoogleInput
+            v-model="form.nombre"
+            label="Nombre del método *"
+            placeholder="Ej. Efectivo, Tarjeta Débito/Crédito, Transferencia"
+            required
           />
         </div>
-      </div>
-
-      <div v-if="filteredMetodos.length" class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nombre</th>
-              <th class="col-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="m in filteredMetodos"
-              :key="m.id_metodo"
-              :class="{ 'row-editing': m.id_metodo === editingId }"
-            >
-              <td>#{{ m.id_metodo }}</td>
-              <td>{{ m.nombre }}</td>
-              <td class="cell-actions">
-                <button
-                  class="icon-button"
-                  title="Editar"
-                  @click="onEdit(m)"
-                >
-                  ✏️
-                </button>
-                <button
-                  class="icon-button icon-danger"
-                  title="Eliminar"
-                  @click="onDelete(m.id_metodo)"
-                >
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <p v-else class="empty">
-        No hay métodos que coincidan con el filtro.
-      </p>
-    </div>
+        <!-- Botones los maneja el footer del modal -->
+      </form>
+    </GoogleModal>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleModal from '../components/modal/modal.vue';
+import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
+
 import {
   getMetodosPago,
   createMetodoPago,
@@ -180,6 +112,12 @@ const isEditing = ref(false);
 const editingId = ref<number | null>(null);
 const search = ref('');
 
+// para mensajes de éxito dentro de la tabla (toast interno)
+const tableSuccessMessage = ref<string | null>(null);
+
+// Modal formulario
+const showFormModal = ref(false);
+
 const form = ref<MetodoPagoPayload>({
   nombre: '',
 });
@@ -192,6 +130,12 @@ function resetForm() {
   editingId.value = null;
 }
 
+// Columnas para GoogleTable
+const metodosColumns: TableColumn[] = [
+  { key: 'id_metodo', label: '#', width: '70px', align: 'left' },
+  { key: 'nombre', label: 'Nombre' },
+];
+
 const filteredMetodos = computed(() => {
   if (!search.value.trim()) return metodos.value;
   const term = search.value.toLowerCase();
@@ -200,6 +144,7 @@ const filteredMetodos = computed(() => {
   );
 });
 
+// Carga de métodos
 async function loadMetodos() {
   try {
     error.value = null;
@@ -213,19 +158,38 @@ async function loadMetodos() {
   }
 }
 
-async function onSubmit() {
+// Abre modal para nuevo método
+function openCreateForm() {
+  resetForm();
+  isEditing.value = false;
+  showFormModal.value = true;
+}
+
+// Lógica central para guardar/actualizar
+async function saveMetodo() {
   try {
     error.value = null;
     loadingSave.value = true;
 
+    const payload: MetodoPagoPayload = {
+      nombre: form.value.nombre.trim(),
+    };
+
+    if (!payload.nombre) {
+      error.value = 'El nombre del método es obligatorio.';
+      return;
+    }
+
     if (isEditing.value && editingId.value !== null) {
-      const updated = await updateMetodoPago(editingId.value, form.value);
+      const updated = await updateMetodoPago(editingId.value, payload);
       metodos.value = metodos.value.map((m) =>
         m.id_metodo === updated.id_metodo ? updated : m,
       );
+      tableSuccessMessage.value = 'Método de pago actualizado correctamente';
     } else {
-      const created = await createMetodoPago(form.value);
+      const created = await createMetodoPago(payload);
       metodos.value.push(created);
+      tableSuccessMessage.value = 'Método de pago creado correctamente';
     }
 
     resetForm();
@@ -241,19 +205,33 @@ async function onSubmit() {
   }
 }
 
+// submit desde el modal (botón footer o Enter en el form)
+async function handleFormSubmit() {
+  await saveMetodo();
+  if (!error.value) {
+    showFormModal.value = false;
+  }
+}
+
+// cancelar desde el modal
+function handleCancelForm() {
+  resetForm();
+  showFormModal.value = false;
+}
+
+// Editar desde la tabla (GoogleTable @edit pasa la fila completa)
 function onEdit(metodo: MetodoPago) {
   isEditing.value = true;
   editingId.value = metodo.id_metodo;
   form.value = {
     nombre: metodo.nombre,
   };
+  showFormModal.value = true;
 }
 
-function onCancelEdit() {
-  resetForm();
-}
-
-async function onDelete(id_metodo: number) {
+// Eliminar desde la tabla
+async function onDelete(row: MetodoPago) {
+  const id_metodo = row.id_metodo;
   if (!confirm(`¿Eliminar el método de pago #${id_metodo}?`)) return;
   try {
     await deleteMetodoPago(id_metodo);
@@ -261,6 +239,7 @@ async function onDelete(id_metodo: number) {
     if (editingId.value === id_metodo) {
       resetForm();
     }
+    tableSuccessMessage.value = 'Método de pago eliminado correctamente';
   } catch (e: any) {
     console.error(e);
     const backendMsg =
@@ -279,6 +258,26 @@ onMounted(loadMetodos);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Animación suave tipo Google */
+.g-page-animate {
+  animation: g-fade-in 180ms ease-out;
+}
+
+@keyframes g-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-to-home {
+  margin-bottom: 0.5rem;
 }
 
 .page-header {
@@ -302,139 +301,7 @@ onMounted(loadMetodos);
 .page-header-meta {
   display: flex;
   gap: 0.5rem;
-}
-
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #202124;
-}
-
-.card-subtitle {
-  font-size: 0.85rem;
-  color: #5f6368;
-}
-
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Formulario */
-
-.form {
-  margin-top: 0.5rem;
-}
-
-.form-grid.single {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.9rem 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.field-label {
-  color: #5f6368;
-}
-
-.field-input {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  background-color: #ffffff;
-}
-
-.field-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.form-actions-left,
-.form-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Botones */
-
-.btn {
-  border-radius: 999px;
-  border: none;
-  font-size: 0.9rem;
-  padding: 0.45rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-primary {
-  background: #1a73e8;
-  color: #ffffff;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.btn-text {
-  background: transparent;
-  color: #1a73e8;
-}
-
-.btn-text:hover {
-  background: rgba(26, 115, 232, 0.08);
-}
-
-/* Search */
-
-.search-input {
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  font-size: 0.85rem;
-  min-width: 260px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
 }
 
 /* Chips */
@@ -459,91 +326,17 @@ onMounted(loadMetodos);
   color: #1a73e8;
 }
 
-/* Tabla */
+/* Formulario dentro del modal */
 
-.table-wrapper {
-  margin-top: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid #dadce0;
-  overflow: hidden;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-}
-
-.table th,
-.table td {
-  padding: 0.55rem 0.75rem;
-  font-size: 0.85rem;
-}
-
-.table thead {
-  background: #f8f9fa;
-}
-
-.table th {
-  text-align: left;
-  font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
-}
-
-.table td {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
-}
-
-.row-editing {
-  background: #e8f0fe;
-}
-
-.col-actions {
-  width: 80px;
-}
-
-.cell-actions {
+.metodo-form {
   display: flex;
-  gap: 0.25rem;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* Icon buttons */
-
-.icon-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 999px;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.9rem;
-}
-
-.icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
-}
-
-.icon-danger {
-  color: #d93025;
-}
-
-.icon-danger:hover {
-  background: rgba(217, 48, 37, 0.12);
-}
-
-/* Mensajes */
-
-.error {
-  color: #d93025;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-}
-
-.empty {
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: #5f6368;
+.metodo-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
 }
 </style>

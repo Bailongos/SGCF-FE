@@ -1,14 +1,16 @@
 <!-- src/views/CiclosEscolaresView.vue -->
 <template>
-  <section class="page">
+  <section class="page g-page-animate">
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
-        <RouterLink to="/inicio" custom v-slot="{ navigate }">
-            <GoogleButton @click="navigate" color="#1a73e8" label="Volver a Inicio">
-                <span class="material-symbols-outlined">arrow_back</span>
-            </GoogleButton>
-        </RouterLink>
+      <RouterLink to="/inicio" custom v-slot="{ navigate }">
+        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Volver a inicio
+        </GoogleButton>
+      </RouterLink>
     </div>
+
     <!-- Header estilo Google -->
     <header class="page-header">
       <div>
@@ -17,199 +19,110 @@
           Administra los ciclos escolares activos y anteriores.
         </p>
       </div>
+
       <div class="page-header-meta">
         <span class="chip chip-soft">
           Total: <strong>{{ ciclos.length }}</strong>
         </span>
+
         <span
           v-if="cicloActual"
           class="chip chip-primary"
         >
-          Ciclo actual: {{ cicloActual.nombre }}
+          Ciclo actual: {{ cicloActual?.nombre }}
         </span>
+
+        <GoogleButton
+          size="sm"
+          color="#1a73e8"
+          @click="openCreateForm"
+        >
+          <span class="material-symbols-outlined">add</span>
+          Nuevo ciclo
+        </GoogleButton>
       </div>
     </header>
 
-    <!-- Card formulario -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">
-            {{ isEditing ? 'Editar ciclo escolar' : 'Nuevo ciclo escolar' }}
-          </h3>
-          <p class="card-subtitle">
-            Registra los rangos de fechas oficiales y marca un ciclo como actual.
-          </p>
-        </div>
-        <span
-          v-if="isEditing && editingId !== null"
-          class="chip chip-primary"
-        >
-          Editando: #{{ editingId }}
-        </span>
-      </div>
+    <!-- Tabla genérica googlesca -->
+    <GoogleTable
+      :rows="ciclos"
+      :columns="ciclosColumns"
+      rowKey="id_ciclo"
+      :loading="loadingList"
+      :error="error"
+      v-model:search="search"
+      title="Listado de ciclos escolares"
+      subtitle="Consulta, edita o elimina ciclos registrados. Se recomienda tener solo un ciclo marcado como actual."
+      icon="date_range"
+      :showReload="true"
+      :useDefaultActions="true"
+      :searchKeys="['nombre']"
+      :successMessage="tableSuccessMessage"
+      emptyMessage="No hay ciclos que coincidan con el filtro."
+      @reload="loadCiclos"
+      @edit="onEdit"
+      @delete="onDelete"
+    />
 
-      <form @submit.prevent="onSubmit" class="form">
-        <div class="form-grid">
-          <label class="field">
-            <span class="field-label">Nombre del ciclo *</span>
-            <input
-              v-model="form.nombre"
-              required
-              class="field-input"
-              placeholder="Ej. Ago-Dic 2024"
-            />
-          </label>
+    <!-- Modal Crear / Editar ciclo con 2 datepickers -->
+    <GoogleModal
+      v-model="showFormModal"
+      :icon="isEditing ? 'edit_calendar' : 'event'"
+      :title="isEditing ? 'Editar ciclo escolar' : 'Nuevo ciclo escolar'"
+      subtitle="Registra los rangos de fechas oficiales y marca un ciclo como actual."
+      maxWidth="620px"
+      density="comfortable"
+      :confirmLoading="loadingSave"
+      :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
+      cancelText="Cancelar"
+      @confirm="handleFormSubmit"
+      @cancel="handleCancelForm"
+    >
+      <form @submit.prevent="handleFormSubmit" class="ciclo-form">
+        <GoogleInput
+          v-model="form.nombre"
+          label="Nombre del ciclo *"
+          placeholder="Ej. Ago-Dic 2024"
+          required
+        />
 
-          <label class="field">
-            <span class="field-label">Fecha de inicio *</span>
-            <input
-              v-model="form.fecha_inicio"
-              type="date"
-              required
-              class="field-input"
-            />
-          </label>
-
-          <label class="field">
-            <span class="field-label">Fecha de fin *</span>
-            <input
-              v-model="form.fecha_fin"
-              type="date"
-              required
-              class="field-input"
-            />
-          </label>
-
-          <label class="field field-checkbox">
-            <input
-              v-model="form.es_actual"
-              type="checkbox"
-            />
-            <span>Marcar como ciclo actual</span>
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <div class="form-actions-left">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="loadingSave"
-            >
-              <span v-if="loadingSave">Guardando...</span>
-              <span v-else>
-                {{ isEditing ? 'Actualizar ciclo' : 'Guardar ciclo' }}
-              </span>
-            </button>
-
-            <button
-              v-if="isEditing"
-              type="button"
-              class="btn btn-text"
-              @click="onCancelEdit"
-            >
-              Cancelar edición
-            </button>
-          </div>
-
-          <div class="form-actions-right">
-            <button
-              type="button"
-              class="btn btn-text"
-              @click="loadCiclos"
-              :disabled="loadingList"
-            >
-              Recargar
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <p v-if="error" class="error">{{ error }}</p>
-    </div>
-
-    <!-- Card listado -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">Listado de ciclos escolares</h3>
-          <p class="card-subtitle">
-            Consulta, edita o elimina ciclos registrados. Se recomienda tener solo
-            <strong>un ciclo marcado como actual</strong>.
-          </p>
-        </div>
-        <div class="card-actions">
-          <input
-            v-model="search"
-            class="search-input"
-            placeholder="Buscar por nombre..."
+        <div class="ciclo-form-dates">
+          <GoogleCalendar
+            v-model="form.fecha_inicio"
+            label="Fecha de inicio *"
+            placeholder="Selecciona fecha de inicio"
+            clearable
+          />
+          <GoogleCalendar
+            v-model="form.fecha_fin"
+            label="Fecha de fin *"
+            placeholder="Selecciona fecha de fin"
+            clearable
           />
         </div>
-      </div>
 
-      <div v-if="filteredCiclos.length" class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nombre</th>
-              <th>Inicio</th>
-              <th>Fin</th>
-              <th>Actual</th>
-              <th class="col-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="c in filteredCiclos"
-              :key="c.id_ciclo"
-              :class="{ 'row-editing': c.id_ciclo === editingId }"
-            >
-              <td>#{{ c.id_ciclo }}</td>
-              <td>{{ c.nombre }}</td>
-              <td>{{ formatDate(c.fecha_inicio) }}</td>
-              <td>{{ formatDate(c.fecha_fin) }}</td>
-              <td>
-                <span
-                  class="chip"
-                  :class="c.es_actual ? 'chip-success' : 'chip-muted'"
-                >
-                  {{ c.es_actual ? 'Sí' : 'No' }}
-                </span>
-              </td>
-              <td class="cell-actions">
-                <button
-                  class="icon-button"
-                  title="Editar"
-                  @click="onEdit(c)"
-                >
-                  ✏️
-                </button>
-                <button
-                  class="icon-button icon-danger"
-                  title="Eliminar"
-                  @click="onDelete(c.id_ciclo)"
-                >
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <p v-else class="empty">
-        No hay ciclos que coincidan con el filtro.
-      </p>
-    </div>
+        <label class="field-checkbox">
+          <input
+            v-model="form.es_actual"
+            type="checkbox"
+          />
+          <span>Marcar como ciclo actual</span>
+        </label>
+      </form>
+    </GoogleModal>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleModal from '../components/modal/modal.vue';
+import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
+import GoogleCalendar from '../components/ui/calendar.vue';
+
 import {
   getCiclosEscolares,
   createCicloEscolar,
@@ -228,6 +141,12 @@ const error = ref<string | null>(null);
 const isEditing = ref(false);
 const editingId = ref<number | null>(null);
 const search = ref('');
+
+// para mostrar mensajes de éxito dentro de la tabla (toast interno)
+const tableSuccessMessage = ref<string | null>(null);
+
+// Modal formulario
+const showFormModal = ref(false);
 
 // Formulario
 const form = ref<CicloEscolarPayload>({
@@ -266,20 +185,28 @@ const cicloActual = computed(() =>
   ciclos.value.find((c) => c.es_actual === true) ?? null,
 );
 
-const filteredCiclos = computed(() => {
-  let list = [...ciclos.value];
-
-  if (search.value.trim()) {
-    const term = search.value.toLowerCase();
-    list = list.filter((c) =>
-      c.nombre.toLowerCase().includes(term),
-    );
-  }
-
-  // Opcional: ordenar por fecha_inicio descendente
-  list.sort((a, b) => (a.fecha_inicio < b.fecha_inicio ? 1 : -1));
-  return list;
-});
+// Columnas para GoogleTable
+const ciclosColumns: TableColumn[] = [
+  { key: 'id_ciclo', label: '#', width: '70px', align: 'left' },
+  { key: 'nombre', label: 'Nombre' },
+  {
+    key: 'fecha_inicio',
+    label: 'Inicio',
+    formatter: (row: CicloEscolar) => formatDate(row.fecha_inicio),
+  },
+  {
+    key: 'fecha_fin',
+    label: 'Fin',
+    formatter: (row: CicloEscolar) => formatDate(row.fecha_fin),
+  },
+  {
+    key: 'es_actual',
+    label: 'Actual',
+    width: '90px',
+    align: 'center',
+    formatter: (row: CicloEscolar) => (row.es_actual ? 'Sí' : 'No'),
+  },
+];
 
 // ---- API CALLS ----
 async function loadCiclos() {
@@ -295,7 +222,15 @@ async function loadCiclos() {
   }
 }
 
-async function onSubmit() {
+// Abre modal para nuevo ciclo
+function openCreateForm() {
+  resetForm();
+  isEditing.value = false;
+  showFormModal.value = true;
+}
+
+// Lógica central para guardar/actualizar
+async function saveCiclo() {
   try {
     error.value = null;
     loadingSave.value = true;
@@ -314,12 +249,14 @@ async function onSubmit() {
       ciclos.value = ciclos.value.map((c) =>
         c.id_ciclo === saved.id_ciclo ? saved : c,
       );
+      tableSuccessMessage.value = 'Ciclo escolar actualizado correctamente';
     } else {
       saved = await createCicloEscolar(payload);
       ciclos.value.push(saved);
+      tableSuccessMessage.value = 'Ciclo escolar creado correctamente';
     }
 
-    // Si se marcó como actual, reflejamos en memoria que los otros no lo sean
+    // Si se marcó como actual, actualizar el resto
     if (saved.es_actual) {
       ciclos.value = ciclos.value.map((c) =>
         c.id_ciclo === saved.id_ciclo
@@ -341,6 +278,21 @@ async function onSubmit() {
   }
 }
 
+// submit desde el modal (botón footer o Enter en el form)
+async function handleFormSubmit() {
+  await saveCiclo();
+  if (!error.value) {
+    showFormModal.value = false;
+  }
+}
+
+// cancelar desde el modal
+function handleCancelForm() {
+  resetForm();
+  showFormModal.value = false;
+}
+
+// Editar desde la tabla (GoogleTable @edit pasa la fila completa)
 function onEdit(ciclo: CicloEscolar) {
   isEditing.value = true;
   editingId.value = ciclo.id_ciclo;
@@ -351,20 +303,21 @@ function onEdit(ciclo: CicloEscolar) {
     fecha_fin: toDateInputValue(ciclo.fecha_fin),
     es_actual: ciclo.es_actual,
   };
+
+  showFormModal.value = true;
 }
 
-function onCancelEdit() {
-  resetForm();
-}
-
-async function onDelete(id_ciclo: number) {
-  if (!confirm(`¿Eliminar el ciclo escolar #${id_ciclo}?`)) return;
+// Eliminar desde la tabla
+async function onDelete(row: CicloEscolar) {
+  const id = row.id_ciclo;
+  if (!confirm(`¿Eliminar el ciclo escolar #${id}?`)) return;
   try {
-    await deleteCicloEscolar(id_ciclo);
-    ciclos.value = ciclos.value.filter((c) => c.id_ciclo !== id_ciclo);
-    if (editingId.value === id_ciclo) {
+    await deleteCicloEscolar(id);
+    ciclos.value = ciclos.value.filter((c) => c.id_ciclo !== id);
+    if (editingId.value === id) {
       resetForm();
     }
+    tableSuccessMessage.value = 'Ciclo escolar eliminado correctamente';
   } catch (e: any) {
     console.error(e);
     const backendMsg =
@@ -383,6 +336,26 @@ onMounted(loadCiclos);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Animación suave tipo Google */
+.g-page-animate {
+  animation: g-fade-in 180ms ease-out;
+}
+
+@keyframes g-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-to-home {
+  margin-bottom: 0.5rem;
 }
 
 .page-header {
@@ -406,163 +379,7 @@ onMounted(loadCiclos);
 .page-header-meta {
   display: flex;
   gap: 0.5rem;
-}
-
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #202124;
-}
-
-.card-subtitle {
-  font-size: 0.85rem;
-  color: #5f6368;
-}
-
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Formulario */
-
-.form {
-  margin-top: 0.5rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.field-label {
-  color: #5f6368;
-}
-
-.field-input {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  background-color: #ffffff;
-}
-
-.field-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
-}
-
-.field-checkbox {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 1.4rem;
-}
-
-/* Hint / mensajes */
-
-.error {
-  color: #d93025;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-}
-
-.empty {
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: #5f6368;
-}
-
-/* Form actions */
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.form-actions-left,
-.form-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Botones */
-
-.btn {
-  border-radius: 999px;
-  border: none;
-  font-size: 0.9rem;
-  padding: 0.45rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-primary {
-  background: #1a73e8;
-  color: #ffffff;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.btn-text {
-  background: transparent;
-  color: #1a73e8;
-}
-
-.btn-text:hover {
-  background: rgba(26, 115, 232, 0.08);
-}
-
-/* Search */
-
-.search-input {
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  font-size: 0.85rem;
-  min-width: 260px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
 }
 
 /* Chips */
@@ -599,77 +416,32 @@ onMounted(loadCiclos);
   color: #5f6368;
 }
 
-/* Tabla */
+/* Formulario dentro del modal */
 
-.table-wrapper {
-  margin-top: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid #dadce0;
-  overflow: hidden;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-}
-
-.table th,
-.table td {
-  padding: 0.55rem 0.75rem;
-  font-size: 0.85rem;
-}
-
-.table thead {
-  background: #f8f9fa;
-}
-
-.table th {
-  text-align: left;
-  font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
-}
-
-.table td {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
-}
-
-.row-editing {
-  background: #e8f0fe;
-}
-
-.col-actions {
-  width: 80px;
-}
-
-.cell-actions {
+.ciclo-form {
   display: flex;
-  gap: 0.25rem;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* Icon buttons */
+.ciclo-form-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
 
-.icon-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 999px;
-  padding: 0.25rem 0.4rem;
+@media (max-width: 768px) {
+  .ciclo-form-dates {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
   font-size: 0.9rem;
-}
-
-.icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
-}
-
-.icon-danger {
-  color: #d93025;
-}
-
-.icon-danger:hover {
-  background: rgba(217, 48, 37, 0.12);
+  color: #5f6368;
 }
 </style>

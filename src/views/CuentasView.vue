@@ -1,15 +1,17 @@
 <!-- src/views/CuentasView.vue -->
 <template>
-  <section class="page">
+  <section class="page g-page-animate">
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
-        <RouterLink to="/inicio" custom v-slot="{ navigate }">
-            <GoogleButton @click="navigate" color="#1a73e8" label="Volver a Inicio">
-                <span class="material-symbols-outlined">arrow_back</span>
-            </GoogleButton>
-        </RouterLink>
+      <RouterLink to="/inicio" custom v-slot="{ navigate }">
+        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Volver a inicio
+        </GoogleButton>
+      </RouterLink>
     </div>
-    <!-- Header -->
+
+    <!-- Header estilo Google -->
     <header class="page-header">
       <div>
         <h2 class="page-title">Cuentas por cobrar</h2>
@@ -26,276 +28,84 @@
           Total pendiente:
           <strong>{{ formatMoney(totalPendiente) }}</strong>
         </span>
+
+        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
+          <span class="material-symbols-outlined">add</span>
+          Nueva cuenta
+        </GoogleButton>
       </div>
     </header>
 
-    <!-- Card formulario -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">
-            {{ isEditing ? 'Editar cuenta' : 'Nueva cuenta' }}
-          </h3>
-          <p class="card-subtitle">
-            Registra un adeudo por alumno, ciclo y concepto (UADEC / ESCUELA).
-          </p>
-        </div>
-        <span
-          v-if="isEditing && form.id_cuenta"
-          class="chip chip-primary"
-        >
-          Editando: #{{ form.id_cuenta }}
-        </span>
-      </div>
+    <!-- Tabla genérica googlesca -->
+    <GoogleTable :rows="cuentas" :columns="cuentasColumns" rowKey="id_cuenta" :loading="loadingList" :error="error"
+      v-model:search="search" title="Listado de cuentas" subtitle="Consulta, edita o elimina adeudos registrados."
+      icon="request_quote" :showReload="true" :useDefaultActions="true" :searchKeys="['matricula', 'concepto']"
+      :successMessage="tableSuccessMessage" emptyMessage="No hay cuentas que coincidan con el filtro."
+      @reload="loadCuentas" @edit="onEdit" @delete="onDelete" />
 
-      <form @submit.prevent="onSubmit" class="form">
-        <div class="form-grid">
+    <!-- Modal Crear / Editar cuenta -->
+    <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit' : 'request_quote'"
+      :title="isEditing ? 'Editar cuenta' : 'Nueva cuenta'"
+      subtitle="Registra un adeudo por alumno, ciclo y concepto (UADEC / ESCUELA)." maxWidth="760px"
+      density="comfortable" :confirmLoading="loadingSave" :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
+      cancelText="Cancelar" @confirm="handleFormSubmit" @cancel="handleCancelForm">
+      <form @submit.prevent="handleFormSubmit" class="cuenta-form">
+        <div class="cuenta-form-grid">
           <!-- Alumno / Matrícula -->
-          <label class="field">
-            <span class="field-label">Matrícula *</span>
-            <input
-              v-model="form.matricula"
-              list="alumnos-list"
-              required
-              class="field-input"
-              placeholder="Ej. 180054"
-            />
-            <datalist id="alumnos-list">
-              <option
-                v-for="al in alumnos"
-                :key="al.matricula"
-                :value="al.matricula"
-              >
-                {{ al.matricula }} · {{ al.nombre_completo }}
-              </option>
-            </datalist>
-          </label>
+          <GoogleSelect v-model="form.matricula" :options="alumnoOptions" label="Alumno / matrícula *"
+            placeholder="Selecciona un alumno..." size="md" />
 
           <!-- Ciclo escolar -->
-          <label class="field">
-            <span class="field-label">Ciclo escolar *</span>
-            <select
-              v-model.number="form.id_ciclo"
-              class="field-input"
-              required
-            >
-              <option disabled value="">
-                Selecciona un ciclo
-              </option>
-              <option
-                v-for="c in ciclos"
-                :key="c.id_ciclo"
-                :value="c.id_ciclo"
-              >
-                {{ c.nombre }}
-              </option>
-            </select>
-            <small v-if="!ciclos.length" class="hint">
-              No hay ciclos cargados.
-            </small>
-          </label>
+          <GoogleSelect v-model="form.id_ciclo" :options="cicloOptions" label="Ciclo escolar *"
+            placeholder="Selecciona un ciclo..." size="md" />
+          <p v-if="!ciclos.length" class="hint span-2">
+            No hay ciclos cargados.
+          </p>
 
           <!-- Concepto -->
-          <label class="field">
-            <span class="field-label">Concepto *</span>
-            <select
-              v-model="form.concepto"
-              class="field-input"
-              required
-            >
-              <option value="UADEC">UADEC</option>
-              <option value="ESCUELA">ESCUELA</option>
-            </select>
-          </label>
+          <GoogleSelect v-model="form.concepto" :options="conceptoOptions" label="Concepto *"
+            placeholder="Selecciona un concepto..." size="md" />
 
           <!-- Monto -->
-          <label class="field">
-            <span class="field-label">Monto *</span>
-            <input
-              v-model.number="form.monto"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              class="field-input"
-              placeholder="0.00"
-            />
-          </label>
+          <GoogleInput v-model="form.monto" label="Monto *" type="number" step="0.01" min="0" placeholder="0.00"
+            required />
 
           <!-- Pagado -->
-          <label class="field field-checkbox">
-            <input
-              v-model="form.pagado"
-              type="checkbox"
-            />
+          <label class="field-checkbox span-2">
+            <input v-model="form.pagado" type="checkbox" />
             <span>Marcar como pagado</span>
           </label>
 
           <!-- Fecha de pago -->
-          <label class="field">
-            <span class="field-label">Fecha de pago</span>
-            <input
-              v-model="form.fecha_pago"
-              type="date"
-              class="field-input"
-              :disabled="!form.pagado"
-            />
-          </label>
+          <GoogleInput v-model="form.fecha_pago" label="Fecha de pago" type="date" :disabled="!form.pagado" />
 
           <!-- Método de pago -->
-          <label class="field">
-            <span class="field-label">Método de pago</span>
-            <select
-              v-model.number="form.id_metodo"
-              class="field-input"
-              :disabled="!form.pagado"
-            >
-              <option :value="0">Sin especificar</option>
-              <option
-                v-for="m in metodos"
-                :key="m.id_metodo"
-                :value="m.id_metodo"
-              >
-                {{ m.nombre }}
-              </option>
-            </select>
-            <small v-if="!metodos.length" class="hint">
-              No hay métodos de pago cargados.
-            </small>
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <div class="form-actions-left">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="loadingSave"
-            >
-              <span v-if="loadingSave">Guardando...</span>
-              <span v-else>
-                {{ isEditing ? 'Actualizar cuenta' : 'Guardar cuenta' }}
-              </span>
-            </button>
-
-            <button
-              v-if="isEditing"
-              type="button"
-              class="btn btn-text"
-              @click="onCancelEdit"
-            >
-              Cancelar edición
-            </button>
-          </div>
-
-          <div class="form-actions-right">
-            <button
-              type="button"
-              class="btn btn-text"
-              @click="loadCuentas"
-              :disabled="loadingList"
-            >
-              Recargar
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <p v-if="error" class="error">{{ error }}</p>
-    </div>
-
-    <!-- Card listado -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">Listado de cuentas</h3>
-          <p class="card-subtitle">
-            Consulta, edita o elimina adeudos registrados.
+          <GoogleSelect v-model="form.id_metodo" :options="metodoOptions" label="Método de pago"
+            placeholder="Selecciona un método..." size="md" :disabled="!form.pagado" />
+          <p v-if="!metodos.length" class="hint span-2">
+            No hay métodos de pago cargados.
           </p>
         </div>
-        <div class="card-actions">
-          <input
-            v-model="search"
-            class="search-input"
-            placeholder="Buscar por matrícula, alumno o concepto..."
-          />
-        </div>
-      </div>
 
-      <div v-if="filteredCuentas.length" class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Matrícula</th>
-              <th>Alumno</th>
-              <th>Concepto</th>
-              <th>Ciclo</th>
-              <th>Monto</th>
-              <th>Pagado</th>
-              <th>Fecha pago</th>
-              <th>Método</th>
-              <th class="col-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="cuenta in filteredCuentas"
-              :key="cuenta.id_cuenta"
-              :class="{ 'row-editing': cuenta.id_cuenta === form.id_cuenta }"
-            >
-              <td>#{{ cuenta.id_cuenta }}</td>
-              <td>{{ cuenta.matricula }}</td>
-              <td>{{ getAlumnoNombre(cuenta.matricula) }}</td>
-              <td>{{ cuenta.concepto }}</td>
-              <td>{{ getCicloNombre(cuenta.id_ciclo) }}</td>
-              <td>{{ formatMoney(cuenta.monto) }}</td>
-              <td>
-                <span
-                  class="chip"
-                  :class="cuenta.pagado ? 'chip-success' : 'chip-warning'"
-                >
-                  {{ cuenta.pagado ? 'PAGADO' : 'PENDIENTE' }}
-                </span>
-              </td>
-              <td>
-                {{ formatDate(cuenta.fecha_pago) }}
-              </td>
-              <td>
-                {{ getMetodoNombre(cuenta.id_metodo) }}
-              </td>
-              <td class="cell-actions">
-                <button
-                  class="icon-button"
-                  title="Editar"
-                  @click="onEdit(cuenta)"
-                >
-                  ✏️
-                </button>
-                <button
-                  class="icon-button icon-danger"
-                  title="Eliminar"
-                  @click="onDelete(cuenta.id_cuenta)"
-                >
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <p v-else class="empty">
-        No hay cuentas que coincidan con el filtro.
-      </p>
-    </div>
+        <p class="cuenta-hint">
+          Marca la cuenta como <strong>pagada</strong> para registrar fecha y método de pago.
+          Si no se especifica método, se guardará como <strong>sin especificar</strong>.
+        </p>
+      </form>
+    </GoogleModal>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleModal from '../components/modal/modal.vue';
+import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
+import GoogleSelect, { type SelectOption } from '../components/ui/select.vue';
+
 import {
   getCuentas,
   createCuenta,
@@ -312,6 +122,7 @@ import {
   type MetodoPago,
 } from '../services/metodo-pago';
 
+// ---- STATE ----
 const cuentas = ref<Cuenta[]>([]);
 const alumnos = ref<Alumno[]>([]);
 const ciclos = ref<Ciclo[]>([]);
@@ -324,10 +135,16 @@ const error = ref<string | null>(null);
 const search = ref('');
 const isEditing = ref(false);
 
+// para mostrar mensajes de éxito dentro de la tabla
+const tableSuccessMessage = ref<string | null>(null);
+
+// Modal formulario
+const showFormModal = ref(false);
+
 interface CuentaForm extends CuentaPayload {
   id_cuenta: number | null;
   fecha_pago: string | null;
-  id_metodo: number | null;
+  id_metodo: number | null | 0;
 }
 
 const form = ref<CuentaForm>({
@@ -341,12 +158,43 @@ const form = ref<CuentaForm>({
   id_metodo: 0, // 0 = “sin especificar”
 });
 
+// ---- OPTIONS PARA SELECTS ----
+const alumnoOptions = computed<SelectOption[]>(() =>
+  alumnos.value.map((al) => ({
+    value: al.matricula,
+    label: `${al.matricula} · ${al.nombre_completo}`,
+  })),
+);
+
+const cicloOptions = computed<SelectOption[]>(() =>
+  ciclos.value.map((c) => ({
+    value: c.id_ciclo,
+    label: c.nombre,
+  })),
+);
+
+const conceptoOptions: SelectOption[] = [
+  { value: 'UADEC', label: 'UADEC' },
+  { value: 'ESCUELA', label: 'ESCUELA' },
+];
+
+const metodoOptions = computed<SelectOption[]>(() => [
+  { value: 0, label: 'Sin especificar' },
+  ...metodos.value.map((m) => ({
+    value: m.id_metodo,
+    label: m.nombre,
+  })),
+]);
+
+// ---- HELPERS ----
 function resetForm() {
+  const firstCiclo = ciclos.value.length > 0 ? ciclos.value[0] : null;
+
   form.value = {
     id_cuenta: null,
     matricula: '',
     concepto: 'UADEC',
-    id_ciclo: ciclos.value[0]?.id_ciclo ?? 0,
+    id_ciclo: firstCiclo ? firstCiclo.id_ciclo : 0,
     monto: 0,
     pagado: false,
     fecha_pago: null,
@@ -355,7 +203,6 @@ function resetForm() {
   isEditing.value = false;
 }
 
-// Helpers
 
 function formatMoney(value: number | null | undefined): string {
   const n = Number(value ?? 0);
@@ -405,23 +252,7 @@ watch(
   },
 );
 
-// Computed
-
-const filteredCuentas = computed(() => {
-  if (!search.value.trim()) return cuentas.value;
-  const term = search.value.toLowerCase();
-  return cuentas.value.filter((c) => {
-    const alumno = getAlumnoNombre(c.matricula).toLowerCase();
-    const metodo = getMetodoNombre(c.id_metodo).toLowerCase();
-    return (
-      c.matricula.toLowerCase().includes(term) ||
-      alumno.includes(term) ||
-      c.concepto.toLowerCase().includes(term) ||
-      metodo.includes(term)
-    );
-  });
-});
-
+// Totales
 const totalPendiente = computed(() =>
   cuentas.value.reduce(
     (sum, c) => (c.pagado ? sum : sum + (Number(c.monto) || 0)),
@@ -429,34 +260,66 @@ const totalPendiente = computed(() =>
   ),
 );
 
-// Loaders
+// Columnas para GoogleTable
+const cuentasColumns: TableColumn[] = [
+  { key: 'id_cuenta', label: '#', width: '70px' },
+  { key: 'matricula', label: 'Matrícula', width: '110px' },
+  {
+    key: 'alumno',
+    label: 'Alumno',
+    formatter: (row: Cuenta) => getAlumnoNombre(row.matricula),
+  },
+  { key: 'concepto', label: 'Concepto', width: '110px' },
+  {
+    key: 'ciclo',
+    label: 'Ciclo',
+    formatter: (row: Cuenta) => getCicloNombre(row.id_ciclo),
+  },
+  {
+    key: 'monto',
+    label: 'Monto',
+    align: 'right',
+    formatter: (row: Cuenta) => formatMoney(row.monto),
+  },
+  {
+    key: 'pagado',
+    label: 'Estado',
+    width: '110px',
+    formatter: (row: Cuenta) => (row.pagado ? 'Pagado' : 'Pendiente'),
+  },
+  {
+    key: 'fecha_pago',
+    label: 'Fecha pago',
+    width: '120px',
+    formatter: (row: Cuenta) => formatDate(row.fecha_pago),
+  },
+  {
+    key: 'metodo',
+    label: 'Método',
+    formatter: (row: Cuenta) => getMetodoNombre(row.id_metodo),
+  },
+];
 
+// ---- LOADERS ----
 async function loadCatalogos() {
   try {
-    console.log('%c[loadCatalogos] Llamando servicios...', 'color: #1a73e8;');
-
     const [al, ci, mp] = await Promise.all([
       getAlumnos(),
       getCiclos(),
       getMetodosPago(),
     ]);
 
-    // 🔹 IMPRIME LO QUE REGRESA CADA SERVICE
-    console.log('[getAlumnos] respuesta:', al);
-    console.log('[getCiclos] respuesta:', ci);
-    console.log('[getMetodosPago] respuesta:', mp);
-
     alumnos.value = al;
     ciclos.value = ci;
     metodos.value = mp;
 
-    if (!form.value.id_ciclo && ciclos.value.length) {
-      form.value.id_ciclo = ciclos.value[0].id_ciclo;
+    if (!form.value.id_ciclo && ciclos.value.length > 0) {
+      const firstCiclo = ciclos.value[0];
+      if (firstCiclo) {
+        form.value.id_ciclo = firstCiclo.id_ciclo;
+      }
     }
 
-    console.log('[loadCatalogos] alumnos:', alumnos.value);
-    console.log('[loadCatalogos] ciclos:', ciclos.value);
-    console.log('[loadCatalogos] metodos:', metodos.value);
   } catch (e) {
     console.error('Error al cargar catálogos', e);
   }
@@ -466,66 +329,68 @@ async function loadCuentas() {
   try {
     error.value = null;
     loadingList.value = true;
-    console.log('%c[loadCuentas] Llamando getCuentas...', 'color: #1a73e8;');
     const resp = await getCuentas();
-
-    // 🔹 IMPRIME LO QUE REGRESA getCuentas
-    console.log('[getCuentas] respuesta:', resp);
-
     cuentas.value = resp;
-
-    console.log('[loadCuentas] cuentas en estado:', cuentas.value);
   } catch (e) {
-    console.error('Error en loadCuentas', e);
+    console.error('Error al cargar cuentas', e);
     error.value = 'Error al cargar cuentas';
   } finally {
     loadingList.value = false;
   }
 }
 
-// CRUD
+// ---- CRUD ----
 
-async function onSubmit() {
+// Abre modal para nueva cuenta
+function openCreateForm() {
+  resetForm();
+  isEditing.value = false;
+  showFormModal.value = true;
+}
+
+// Lógica central para guardar/actualizar
+async function saveCuenta() {
   try {
     error.value = null;
+    tableSuccessMessage.value = null;
     loadingSave.value = true;
 
     const payload: CuentaPayload = {
-      matricula: form.value.matricula.trim(),
+      matricula: (form.value.matricula ?? '').toString().trim(),
       concepto: form.value.concepto as ConceptoCuenta,
-      id_ciclo: form.value.id_ciclo,
+      id_ciclo: Number(form.value.id_ciclo) || 0,
       monto: Number(form.value.monto) || 0,
       pagado: form.value.pagado,
       fecha_pago: form.value.pagado ? form.value.fecha_pago ?? null : null,
       id_metodo:
-        form.value.pagado && form.value.id_metodo && form.value.id_metodo !== 0
-          ? form.value.id_metodo
+        form.value.pagado &&
+          form.value.id_metodo &&
+          form.value.id_metodo !== 0
+          ? Number(form.value.id_metodo)
           : null,
     };
 
-    console.log('[onSubmit] payload a enviar:', payload);
+    if (!payload.matricula || !payload.id_ciclo) {
+      error.value =
+        'La matrícula y el ciclo escolar son obligatorios.';
+      return;
+    }
 
     if (isEditing.value && form.value.id_cuenta != null) {
-      console.log('[onSubmit] updateCuenta id:', form.value.id_cuenta);
       const updated = await updateCuenta(form.value.id_cuenta, payload);
-      console.log('[updateCuenta] respuesta:', updated);
-
       cuentas.value = cuentas.value.map((c) =>
         c.id_cuenta === updated.id_cuenta ? updated : c,
       );
+      tableSuccessMessage.value = 'Cuenta actualizada correctamente';
     } else {
-      console.log('[onSubmit] createCuenta');
       const created = await createCuenta(payload);
-      console.log('[createCuenta] respuesta:', created);
-
       cuentas.value.push(created);
+      tableSuccessMessage.value = 'Cuenta creada correctamente';
     }
-
-    console.log('[onSubmit] cuentas después de guardar:', cuentas.value);
 
     resetForm();
   } catch (e) {
-    console.error('[onSubmit] error:', e);
+    console.error('Error al guardar cuenta', e);
     error.value = isEditing.value
       ? 'Error al actualizar la cuenta'
       : 'Error al crear la cuenta';
@@ -534,9 +399,22 @@ async function onSubmit() {
   }
 }
 
-function onEdit(cuenta: Cuenta) {
-  console.log('[onEdit] cuenta seleccionada:', cuenta);
+// submit desde el modal
+async function handleFormSubmit() {
+  await saveCuenta();
+  if (!error.value) {
+    showFormModal.value = false;
+  }
+}
 
+// cancelar desde el modal
+function handleCancelForm() {
+  resetForm();
+  showFormModal.value = false;
+}
+
+// Editar desde la tabla
+function onEdit(cuenta: Cuenta) {
   isEditing.value = true;
   form.value = {
     id_cuenta: cuenta.id_cuenta,
@@ -550,46 +428,59 @@ function onEdit(cuenta: Cuenta) {
       : null,
     id_metodo: cuenta.id_metodo ?? 0,
   };
-
-  console.log('[onEdit] form cargado:', form.value);
+  showFormModal.value = true;
 }
 
-function onCancelEdit() {
-  console.log('[onCancelEdit] reseteando formulario');
-  resetForm();
-}
-
-async function onDelete(id_cuenta: number) {
+// Eliminar desde la tabla
+async function onDelete(row: Cuenta) {
+  const id_cuenta = row.id_cuenta;
   if (!confirm(`¿Eliminar cuenta #${id_cuenta}?`)) return;
   try {
-    console.log('[onDelete] eliminando cuenta:', id_cuenta);
     await deleteCuenta(id_cuenta);
-    cuentas.value = cuentas.value.filter((c) => c.id_cuenta !== id_cuenta);
-
-    console.log('[onDelete] cuentas después de eliminar:', cuentas.value);
-
+    cuentas.value = cuentas.value.filter(
+      (c) => c.id_cuenta !== id_cuenta,
+    );
     if (form.value.id_cuenta === id_cuenta) {
       resetForm();
     }
+    tableSuccessMessage.value = 'Cuenta eliminada correctamente';
   } catch (e) {
-    console.error('[onDelete] error:', e);
+    console.error('Error al eliminar cuenta', e);
     error.value = 'Error al eliminar la cuenta';
   }
 }
 
 onMounted(async () => {
-  console.log('%c[CuentasView] onMounted', 'color: purple;');
   await Promise.all([loadCatalogos(), loadCuentas()]);
 });
 </script>
 
-
 <style scoped>
-/* mismos estilos que ya traías */
 .page {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Animación suave tipo Google */
+.g-page-animate {
+  animation: g-fade-in 180ms ease-out;
+}
+
+@keyframes g-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-to-home {
+  margin-bottom: 0.5rem;
 }
 
 .page-header {
@@ -613,153 +504,7 @@ onMounted(async () => {
 .page-header-meta {
   display: flex;
   gap: 0.5rem;
-}
-
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #202124;
-}
-
-.card-subtitle {
-  font-size: 0.85rem;
-  color: #5f6368;
-}
-
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Formulario */
-
-.form {
-  margin-top: 0.5rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.field-label {
-  color: #5f6368;
-}
-
-.field-input {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  background-color: #ffffff;
-}
-
-.field-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
-}
-
-.field-checkbox {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 1.4rem;
-}
-
-.hint {
-  font-size: 0.75rem;
-  color: #a0a4a8;
-  margin-top: 0.15rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.form-actions-left,
-.form-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Botones */
-
-.btn {
-  border-radius: 999px;
-  border: none;
-  font-size: 0.9rem;
-  padding: 0.45rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-primary {
-  background: #1a73e8;
-  color: #ffffff;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.btn-text {
-  background: transparent;
-  color: #1a73e8;
-}
-
-.btn-text:hover {
-  background: rgba(26, 115, 232, 0.08);
-}
-
-/* Search */
-
-.search-input {
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  font-size: 0.85rem;
-  min-width: 260px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
 }
 
 /* Chips */
@@ -802,91 +547,54 @@ onMounted(async () => {
   color: #5f6368;
 }
 
-/* Tabla */
+/* Formulario dentro del modal */
 
-.table-wrapper {
-  margin-top: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid #dadce0;
-  overflow: hidden;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-}
-
-.table th,
-.table td {
-  padding: 0.55rem 0.75rem;
-  font-size: 0.85rem;
-}
-
-.table thead {
-  background: #f8f9fa;
-}
-
-.table th {
-  text-align: left;
-  font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
-}
-
-.table td {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
-}
-
-.row-editing {
-  background: #e8f0fe;
-}
-
-.col-actions {
-  width: 80px;
-}
-
-.cell-actions {
+.cuenta-form {
   display: flex;
-  gap: 0.25rem;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-/* Icon buttons */
-
-.icon-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 999px;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.9rem;
+.cuenta-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+  margin-top: 0.25rem;
 }
 
-.icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
+.span-2 {
+  grid-column: span 2;
 }
 
-.icon-danger {
-  color: #d93025;
+@media (max-width: 768px) {
+  .cuenta-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
 }
 
-.icon-danger:hover {
-  background: rgba(217, 48, 37, 0.12);
-}
-
-/* Mensajes */
-
-.error {
-  color: #d93025;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-}
-
-.empty {
-  margin-top: 0.75rem;
+.field-checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
   font-size: 0.9rem;
   color: #5f6368;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: #a0a4a8;
+  margin-top: 0.1rem;
+}
+
+.cuenta-hint {
+  font-size: 0.8rem;
+  color: #80868b;
+  margin-top: 0.25rem;
 }
 </style>

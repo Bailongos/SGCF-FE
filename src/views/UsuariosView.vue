@@ -1,14 +1,17 @@
+<!-- src/views/UsuariosView.vue -->
 <template>
-  <section class="page">
+  <section class="page g-page-animate">
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
-        <RouterLink to="/inicio" custom v-slot="{ navigate }">
-            <GoogleButton @click="navigate" color="#1a73e8" label="Volver a Inicio">
-                <span class="material-symbols-outlined">arrow_back</span>
-            </GoogleButton>
-        </RouterLink>
+      <RouterLink to="/inicio" custom v-slot="{ navigate }">
+        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Volver a inicio
+        </GoogleButton>
+      </RouterLink>
     </div>
-    <!-- Header -->
+
+    <!-- Header estilo Google -->
     <header class="page-header">
       <div>
         <h2 class="page-title">Usuarios del sistema</h2>
@@ -25,58 +28,74 @@
           Activos:
           <strong>{{ usuariosActivos }}</strong>
         </span>
+
+        <GoogleButton
+          size="sm"
+          color="#1a73e8"
+          @click="openCreateForm"
+        >
+          <span class="material-symbols-outlined">person_add</span>
+          Nuevo usuario
+        </GoogleButton>
       </div>
     </header>
 
-    <!-- Card formulario -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">
-            {{ isEditing ? 'Editar usuario' : 'Nuevo usuario' }}
-          </h3>
-          <p class="card-subtitle">
-            Crea o edita usuarios, asignando roles y, si aplica, vinculándolos
-            a un alumno.
-          </p>
-        </div>
-        <span
-          v-if="isEditing && form.id_usuario"
-          class="chip chip-primary"
-        >
-          Editando: #{{ form.id_usuario }}
-        </span>
-      </div>
+    <!-- Tabla genérica googlesca -->
+    <GoogleTable
+      :rows="usuariosRows"
+      :columns="usuariosColumns"
+      rowKey="id_usuario"
+      :loading="loadingList"
+      :error="error"
+      v-model:search="search"
+      title="Listado de usuarios"
+      subtitle="Consulta, edita o elimina usuarios registrados en el sistema."
+      icon="manage_accounts"
+      :showReload="true"
+      :useDefaultActions="true"
+      :searchKeys="['username', 'rolNombre', 'matricula_alumno', 'alumnoNombre']"
+      :successMessage="tableSuccessMessage"
+      emptyMessage="No hay usuarios que coincidan con el filtro."
+      @reload="loadUsuarios"
+      @edit="onEdit"
+      @delete="onDelete"
+    />
 
-      <form @submit.prevent="onSubmit" class="form">
-        <div class="form-grid">
+    <!-- Modal Crear / Editar usuario -->
+    <GoogleModal
+      v-model="showFormModal"
+      :icon="isEditing ? 'manage_accounts' : 'person_add'"
+      :title="isEditing ? 'Editar usuario' : 'Nuevo usuario'"
+      subtitle="Crea o edita usuarios, asignando roles y, si aplica, vinculándolos a un alumno."
+      maxWidth="780px"
+      density="comfortable"
+      :confirmLoading="loadingSave"
+      :confirmText="isEditing ? 'Actualizar usuario' : 'Guardar usuario'"
+      cancelText="Cancelar"
+      @confirm="handleFormSubmit"
+      @cancel="handleCancelForm"
+    >
+      <form @submit.prevent="handleFormSubmit" class="user-form">
+        <div class="user-form-grid">
           <!-- Username -->
-          <label class="field">
-            <span class="field-label">Usuario *</span>
-            <input
-              v-model="form.username"
-              required
-              class="field-input"
-              placeholder="Ej. admin, juan.perez"
-            />
-          </label>
+          <GoogleInput
+            v-model="form.username"
+            label="Usuario *"
+            placeholder="Ej. admin, juan.perez"
+            required
+          />
 
           <!-- Password -->
-          <label class="field">
-            <span class="field-label">
-              Contraseña
-              <small v-if="isEditing">(deja en blanco para no cambiarla)</small>
-            </span>
-            <input
-              v-model="form.password"
-              type="password"
-              class="field-input"
-              :required="!isEditing"
-              placeholder="••••••••"
-            />
-          </label>
+          <GoogleInput
+            v-model="form.password"
+            label="Contraseña"
+            type="password"
+            :hint="isEditing ? 'Déjala en blanco si no quieres cambiarla' : ''"
+            :required="!isEditing"
+            placeholder="••••••••"
+          />
 
-          <!-- Rol -->
+          <!-- Rol (select nativo para no inventar GoogleSelect aquí) -->
           <label class="field">
             <span class="field-label">Rol *</span>
             <select
@@ -100,7 +119,7 @@
             </small>
           </label>
 
-          <!-- Matrícula (opcional) -->
+          <!-- Matrícula vinculada -->
           <label class="field">
             <span class="field-label">Matrícula vinculada (opcional)</span>
             <input
@@ -132,128 +151,21 @@
             <span>Usuario activo</span>
           </label>
         </div>
-
-        <div class="form-actions">
-          <div class="form-actions-left">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="loadingSave"
-            >
-              <span v-if="loadingSave">Guardando...</span>
-              <span v-else>
-                {{ isEditing ? 'Actualizar usuario' : 'Guardar usuario' }}
-              </span>
-            </button>
-
-            <button
-              v-if="isEditing"
-              type="button"
-              class="btn btn-text"
-              @click="onCancelEdit"
-            >
-              Cancelar edición
-            </button>
-          </div>
-
-          <div class="form-actions-right">
-            <button
-              type="button"
-              class="btn btn-text"
-              @click="loadUsuarios"
-              :disabled="loadingList"
-            >
-              Recargar
-            </button>
-          </div>
-        </div>
+        <!-- Botones los maneja el footer del modal -->
       </form>
-
-      <p v-if="error" class="error">{{ error }}</p>
-    </div>
-
-    <!-- Card listado -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">Listado de usuarios</h3>
-          <p class="card-subtitle">
-            Consulta, edita o elimina usuarios registrados en el sistema.
-          </p>
-        </div>
-        <div class="card-actions">
-          <input
-            v-model="search"
-            class="search-input"
-            placeholder="Buscar por usuario, rol o alumno..."
-          />
-        </div>
-      </div>
-
-      <div v-if="filteredUsuarios.length" class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Usuario</th>
-              <th>Rol</th>
-              <th>Matrícula</th>
-              <th>Alumno</th>
-              <th>Estado</th>
-              <th class="col-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="u in filteredUsuarios"
-              :key="u.id_usuario"
-              :class="{ 'row-editing': u.id_usuario === form.id_usuario }"
-            >
-              <td>#{{ u.id_usuario }}</td>
-              <td>{{ u.username }}</td>
-              <td>{{ getRolNombre(u.id_rol) }}</td>
-              <td>{{ u.matricula_alumno ?? '' }}</td>
-              <td>{{ getAlumnoNombre(u.matricula_alumno) }}</td>
-              <td>
-                <span
-                  class="chip"
-                  :class="u.activo ? 'chip-success' : 'chip-muted'"
-                >
-                  {{ u.activo ? 'ACTIVO' : 'INACTIVO' }}
-                </span>
-              </td>
-              <td class="cell-actions">
-                <button
-                  class="icon-button"
-                  title="Editar"
-                  @click="onEdit(u)"
-                >
-                  ✏️
-                </button>
-                <button
-                  class="icon-button icon-danger"
-                  title="Eliminar"
-                  @click="onDelete(u.id_usuario)"
-                >
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <p v-else class="empty">
-        No hay usuarios que coincidan con el filtro.
-      </p>
-    </div>
+    </GoogleModal>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleModal from '../components/modal/modal.vue';
+import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
+
 import {
   getUsuarios,
   createUsuario,
@@ -262,6 +174,7 @@ import {
   type Usuario,
   type UsuarioPayload,
 } from '../services/usuarios';
+
 import { getAlumnos, type Alumno } from '../services/alumnos';
 import { getRoles, type Rol } from '../services/roles';
 
@@ -275,10 +188,14 @@ const error = ref<string | null>(null);
 
 const search = ref('');
 const isEditing = ref(false);
+const tableSuccessMessage = ref<string | null>(null);
+
+// Modal
+const showFormModal = ref(false);
 
 interface UsuarioForm extends UsuarioPayload {
   id_usuario: number | null;
-  password: string; // solo para el formulario, no viene del backend
+  password: string; // solo para el formulario (no viene del backend)
 }
 
 const form = ref<UsuarioForm>({
@@ -291,11 +208,12 @@ const form = ref<UsuarioForm>({
 });
 
 function resetForm() {
+  const firstRol = roles.value[0];
   form.value = {
     id_usuario: null,
     username: '',
     password: '',
-    id_rol: roles.value[0]?.id_rol ?? 0,
+    id_rol: firstRol ? firstRol.id_rol : 0,
     matricula_alumno: '',
     activo: true,
   };
@@ -319,38 +237,45 @@ const usuariosActivos = computed(
   () => usuarios.value.filter((u) => u.activo).length,
 );
 
-// Computed listado + filtro
+// Filas que se muestran en la GoogleTable (con campos derivados)
+interface UsuarioRow extends Usuario {
+  rolNombre: string;
+  alumnoNombre: string;
+  estadoLabel: string;
+}
 
-const filteredUsuarios = computed(() => {
-  if (!search.value.trim()) return usuarios.value;
-  const term = search.value.toLowerCase();
+const usuariosRows = computed<UsuarioRow[]>(() =>
+  usuarios.value.map((u) => ({
+    ...u,
+    rolNombre: getRolNombre(u.id_rol),
+    alumnoNombre: getAlumnoNombre(u.matricula_alumno),
+    estadoLabel: u.activo ? 'ACTIVO' : 'INACTIVO',
+  })),
+);
 
-  return usuarios.value.filter((u) => {
-    const rol = getRolNombre(u.id_rol).toLowerCase();
-    const alumno = getAlumnoNombre(u.matricula_alumno).toLowerCase();
-    return (
-      u.username.toLowerCase().includes(term) ||
-      rol.includes(term) ||
-      (u.matricula_alumno ?? '').toLowerCase().includes(term) ||
-      alumno.includes(term)
-    );
-  });
-});
+// Columnas para GoogleTable
+const usuariosColumns: TableColumn[] = [
+  { key: 'id_usuario', label: '#', width: '70px', align: 'left' },
+  { key: 'username', label: 'Usuario' },
+  { key: 'rolNombre', label: 'Rol' },
+  { key: 'matricula_alumno', label: 'Matrícula' },
+  { key: 'alumnoNombre', label: 'Alumno' },
+  { key: 'estadoLabel', label: 'Estado', width: '110px' },
+];
 
 // Loaders
 
 async function loadCatalogos() {
   try {
-    const [al, rl] = await Promise.all([
-      getAlumnos(),
-      getRoles(),
-    ]);
-
+    const [al, rl] = await Promise.all([getAlumnos(), getRoles()]);
     alumnos.value = al;
     roles.value = rl;
 
-    if (!form.value.id_rol && roles.value.length) {
-      form.value.id_rol = roles.value[0].id_rol;
+    if (!form.value.id_rol) {
+      const firstRol = roles.value[0];
+      if (firstRol) {
+        form.value.id_rol = firstRol.id_rol;
+      }
     }
   } catch (e) {
     console.error('Error al cargar catálogos', e);
@@ -370,9 +295,15 @@ async function loadUsuarios() {
   }
 }
 
-// CRUD
+// Abre modal para nuevo usuario
+function openCreateForm() {
+  resetForm();
+  isEditing.value = false;
+  showFormModal.value = true;
+}
 
-async function onSubmit() {
+// Lógica central para guardar/actualizar
+async function saveUsuario() {
   try {
     error.value = null;
     loadingSave.value = true;
@@ -384,20 +315,26 @@ async function onSubmit() {
       activo: form.value.activo,
     };
 
-    // Solo mandamos password si el campo no viene vacío
     const payload: UsuarioPayload =
       form.value.password.trim().length > 0
         ? { ...payloadBase, password: form.value.password }
         : payloadBase;
+
+    if (!payload.username || !payload.id_rol) {
+      error.value = 'Usuario y rol son obligatorios.';
+      return;
+    }
 
     if (isEditing.value && form.value.id_usuario != null) {
       const updated = await updateUsuario(form.value.id_usuario, payload);
       usuarios.value = usuarios.value.map((u) =>
         u.id_usuario === updated.id_usuario ? updated : u,
       );
+      tableSuccessMessage.value = 'Usuario actualizado correctamente';
     } else {
       const created = await createUsuario(payload);
       usuarios.value.push(created);
+      tableSuccessMessage.value = 'Usuario creado correctamente';
     }
 
     resetForm();
@@ -415,23 +352,37 @@ async function onSubmit() {
   }
 }
 
-function onEdit(u: Usuario) {
+// submit desde el modal
+async function handleFormSubmit() {
+  await saveUsuario();
+  if (!error.value) {
+    showFormModal.value = false;
+  }
+}
+
+// cancelar desde el modal
+function handleCancelForm() {
+  resetForm();
+  showFormModal.value = false;
+}
+
+// Editar desde la tabla (GoogleTable @edit pasa la fila completa)
+function onEdit(row: Usuario) {
   isEditing.value = true;
   form.value = {
-    id_usuario: u.id_usuario,
-    username: u.username,
+    id_usuario: row.id_usuario,
+    username: row.username,
     password: '', // nunca mostramos ni traemos el hash
-    id_rol: u.id_rol,
-    matricula_alumno: u.matricula_alumno ?? '',
-    activo: u.activo,
+    id_rol: row.id_rol,
+    matricula_alumno: row.matricula_alumno ?? '',
+    activo: row.activo,
   };
+  showFormModal.value = true;
 }
 
-function onCancelEdit() {
-  resetForm();
-}
-
-async function onDelete(id_usuario: number) {
+// Eliminar desde la tabla
+async function onDelete(row: Usuario) {
+  const id_usuario = row.id_usuario;
   if (!confirm(`¿Eliminar usuario #${id_usuario}?`)) return;
   try {
     await deleteUsuario(id_usuario);
@@ -441,6 +392,7 @@ async function onDelete(id_usuario: number) {
     if (form.value.id_usuario === id_usuario) {
       resetForm();
     }
+    tableSuccessMessage.value = 'Usuario eliminado correctamente';
   } catch (e: any) {
     console.error(e);
     const backendMsg =
@@ -461,6 +413,26 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Animación suave tipo Google */
+.g-page-animate {
+  animation: g-fade-in 180ms ease-out;
+}
+
+@keyframes g-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-to-home {
+  margin-bottom: 0.5rem;
 }
 
 .page-header {
@@ -484,51 +456,64 @@ onMounted(async () => {
 .page-header-meta {
   display: flex;
   gap: 0.5rem;
-}
-
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
 }
 
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #202124;
+/* Chips */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.78rem;
+  border: 1px solid transparent;
 }
 
-.card-subtitle {
-  font-size: 0.85rem;
+.chip-soft {
+  background: #f1f3f4;
   color: #5f6368;
 }
 
-.card-actions {
+.chip-primary {
+  background: #e8f0fe;
+  border-color: #d2e3fc;
+  color: #1a73e8;
+}
+
+.chip-success {
+  background: #e6f4ea;
+  border-color: #c8e6c9;
+  color: #1e8e3e;
+}
+
+.chip-muted {
+  background: #f1f3f4;
+  border-color: #e0e0e0;
+  color: #5f6368;
+}
+
+/* Formulario dentro del modal */
+
+.user-form {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* Formulario */
-
-.form {
-  margin-top: 0.5rem;
-}
-
-.form-grid {
+.user-form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem 1rem;
 }
+
+@media (max-width: 900px) {
+  .user-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Campos extra (para select nativo y checkbox) */
 
 .field {
   display: flex;
@@ -568,196 +553,5 @@ onMounted(async () => {
   font-size: 0.75rem;
   color: #a0a4a8;
   margin-top: 0.15rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.form-actions-left,
-.form-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Botones */
-
-.btn {
-  border-radius: 999px;
-  border: none;
-  font-size: 0.9rem;
-  padding: 0.45rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-primary {
-  background: #1a73e8;
-  color: #ffffff;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.btn-text {
-  background: transparent;
-  color: #1a73e8;
-}
-
-.btn-text:hover {
-  background: rgba(26, 115, 232, 0.08);
-}
-
-/* Search */
-
-.search-input {
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  font-size: 0.85rem;
-  min-width: 260px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
-}
-
-/* Chips */
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.15rem 0.6rem;
-  font-size: 0.78rem;
-  border: 1px solid transparent;
-}
-
-.chip-soft {
-  background: #f1f3f4;
-  color: #5f6368;
-}
-
-.chip-primary {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
-  color: #1a73e8;
-}
-
-.chip-success {
-  background: #e6f4ea;
-  border-color: #c8e6c9;
-  color: #1e8e3e;
-}
-
-.chip-warning {
-  background: #fef7e0;
-  border-color: #fbc02d;
-  color: #8d6e00;
-}
-
-.chip-muted {
-  background: #f1f3f4;
-  border-color: #e0e0e0;
-  color: #5f6368;
-}
-
-/* Tabla */
-
-.table-wrapper {
-  margin-top: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid #dadce0;
-  overflow: hidden;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-}
-
-.table th,
-.table td {
-  padding: 0.55rem 0.75rem;
-  font-size: 0.85rem;
-}
-
-.table thead {
-  background: #f8f9fa;
-}
-
-.table th {
-  text-align: left;
-  font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
-}
-
-.table td {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
-}
-
-.row-editing {
-  background: #e8f0fe;
-}
-
-.col-actions {
-  width: 80px;
-}
-
-.cell-actions {
-  display: flex;
-  gap: 0.25rem;
-  justify-content: flex-end;
-}
-
-/* Icon buttons */
-
-.icon-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 999px;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.9rem;
-}
-
-.icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
-}
-
-.icon-danger {
-  color: #d93025;
-}
-
-.icon-danger:hover {
-  background: rgba(217, 48, 37, 0.12);
-}
-
-/* Mensajes */
-
-.error {
-  color: #d93025;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-}
-
-.empty {
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: #5f6368;
 }
 </style>

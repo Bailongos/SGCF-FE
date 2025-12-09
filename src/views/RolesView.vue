@@ -1,13 +1,16 @@
+<!-- src/views/RolesView.vue -->
 <template>
-  <section class="page">
+  <section class="page g-page-animate">
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
-        <RouterLink to="/inicio" custom v-slot="{ navigate }">
-            <GoogleButton @click="navigate" color="#1a73e8" label="Volver a Inicio">
-                <span class="material-symbols-outlined">arrow_back</span>
-            </GoogleButton>
-        </RouterLink>
+      <RouterLink to="/inicio" custom v-slot="{ navigate }">
+        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Volver a inicio
+        </GoogleButton>
+      </RouterLink>
     </div>
+
     <!-- Header estilo Google -->
     <header class="page-header">
       <div>
@@ -20,147 +23,77 @@
         <span class="chip chip-soft">
           Total: <strong>{{ roles.length }}</strong>
         </span>
+
+        <GoogleButton
+          size="sm"
+          color="#1a73e8"
+          @click="openCreateForm"
+        >
+          <span class="material-symbols-outlined">add</span>
+          Nuevo rol
+        </GoogleButton>
       </div>
     </header>
 
-    <!-- Card formulario -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">
-            {{ isEditing ? 'Editar rol' : 'Nuevo rol' }}
-          </h3>
-          <p class="card-subtitle">
-            Define los roles que se usarán para asignar permisos a los usuarios.
-          </p>
-        </div>
-        <span
-          v-if="isEditing && editingId !== null"
-          class="chip chip-primary"
-        >
-          Editando: #{{ editingId }}
-        </span>
-      </div>
+    <!-- Tabla genérica googlesca -->
+    <GoogleTable
+      :rows="roles"
+      :columns="rolesColumns"
+      rowKey="id_rol"
+      :loading="loadingList"
+      :error="error"
+      v-model:search="search"
+      title="Listado de roles"
+      subtitle="Edita o elimina roles existentes. Evita borrar roles asignados a usuarios activos."
+      icon="shield_person"
+      :showReload="true"
+      :useDefaultActions="true"
+      :searchKeys="['nombre_rol']"
+      :successMessage="tableSuccessMessage"
+      emptyMessage="No hay roles que coincidan con el filtro."
+      @reload="loadRoles"
+      @edit="onEdit"
+      @delete="onDelete"
+    />
 
-      <form @submit.prevent="onSubmit" class="form">
-        <div class="form-grid single">
-          <label class="field">
-            <span class="field-label">Nombre del rol *</span>
-            <input
-              v-model="form.nombre_rol"
-              required
-              class="field-input"
-              placeholder="Ej. Administrador, Caja, Alumno"
-            />
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <div class="form-actions-left">
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="loadingSave"
-            >
-              <span v-if="loadingSave">Guardando...</span>
-              <span v-else>
-                {{ isEditing ? 'Actualizar rol' : 'Guardar rol' }}
-              </span>
-            </button>
-
-            <button
-              v-if="isEditing"
-              type="button"
-              class="btn btn-text"
-              @click="onCancelEdit"
-            >
-              Cancelar edición
-            </button>
-          </div>
-
-          <div class="form-actions-right">
-            <button
-              type="button"
-              class="btn btn-text"
-              @click="loadRoles"
-              :disabled="loadingList"
-            >
-              Recargar
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <p v-if="error" class="error">{{ error }}</p>
-    </div>
-
-    <!-- Card listado -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">Listado de roles</h3>
-          <p class="card-subtitle">
-            Edita o elimina roles existentes. Evita borrar roles que estén asignados a usuarios activos.
-          </p>
-        </div>
-        <div class="card-actions">
-          <input
-            v-model="search"
-            class="search-input"
-            placeholder="Buscar por nombre..."
+    <!-- Modal Crear / Editar rol -->
+    <GoogleModal
+      v-model="showFormModal"
+      :icon="isEditing ? 'shield_person' : 'group_add'"
+      :title="isEditing ? 'Editar rol' : 'Nuevo rol'"
+      subtitle="Define los roles que se usarán para asignar permisos a los usuarios."
+      maxWidth="600px"
+      density="comfortable"
+      :confirmLoading="loadingSave"
+      :confirmText="isEditing ? 'Actualizar rol' : 'Guardar rol'"
+      cancelText="Cancelar"
+      @confirm="handleFormSubmit"
+      @cancel="handleCancelForm"
+    >
+      <form @submit.prevent="handleFormSubmit" class="rol-form">
+        <div class="rol-form-grid">
+          <GoogleInput
+            v-model="form.nombre_rol"
+            label="Nombre del rol *"
+            placeholder="Ej. Administrador, Caja, Alumno"
+            required
           />
         </div>
-      </div>
-
-      <div v-if="filteredRoles.length" class="table-wrapper">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nombre del rol</th>
-              <th class="col-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="r in filteredRoles"
-              :key="r.id_rol"
-              :class="{ 'row-editing': r.id_rol === editingId }"
-            >
-              <td>#{{ r.id_rol }}</td>
-              <td>{{ r.nombre_rol }}</td>
-              <td class="cell-actions">
-                <button
-                  class="icon-button"
-                  title="Editar"
-                  @click="onEdit(r)"
-                >
-                  ✏️
-                </button>
-                <button
-                  class="icon-button icon-danger"
-                  title="Eliminar"
-                  @click="onDelete(r.id_rol)"
-                >
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <p v-else class="empty">
-        No hay roles que coincidan con el filtro.
-      </p>
-    </div>
+        <!-- Botones los maneja el footer del modal -->
+      </form>
+    </GoogleModal>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleModal from '../components/modal/modal.vue';
+import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
+
 import {
   getRoles,
   createRol,
@@ -177,7 +110,12 @@ const error = ref<string | null>(null);
 
 const isEditing = ref(false);
 const editingId = ref<number | null>(null);
+
 const search = ref('');
+const tableSuccessMessage = ref<string | null>(null);
+
+// Modal
+const showFormModal = ref(false);
 
 const form = ref<RolPayload>({
   nombre_rol: '',
@@ -191,13 +129,13 @@ function resetForm() {
   editingId.value = null;
 }
 
-const filteredRoles = computed(() => {
-  if (!search.value.trim()) return roles.value;
-  const term = search.value.toLowerCase();
-  return roles.value.filter((r) =>
-    r.nombre_rol.toLowerCase().includes(term),
-  );
-});
+// Columnas para GoogleTable
+const rolesColumns: TableColumn[] = [
+  { key: 'id_rol', label: '#', width: '70px', align: 'left' },
+  { key: 'nombre_rol', label: 'Nombre del rol' },
+];
+
+// API
 
 async function loadRoles() {
   try {
@@ -212,19 +150,38 @@ async function loadRoles() {
   }
 }
 
-async function onSubmit() {
+// Abre modal para nuevo rol
+function openCreateForm() {
+  resetForm();
+  isEditing.value = false;
+  showFormModal.value = true;
+}
+
+// Lógica central para guardar/actualizar
+async function saveRol() {
   try {
     error.value = null;
     loadingSave.value = true;
 
+    const payload: RolPayload = {
+      nombre_rol: form.value.nombre_rol.trim(),
+    };
+
+    if (!payload.nombre_rol) {
+      error.value = 'El nombre del rol es obligatorio.';
+      return;
+    }
+
     if (isEditing.value && editingId.value !== null) {
-      const updated = await updateRol(editingId.value, form.value);
+      const updated = await updateRol(editingId.value, payload);
       roles.value = roles.value.map((r) =>
         r.id_rol === updated.id_rol ? updated : r,
       );
+      tableSuccessMessage.value = 'Rol actualizado correctamente';
     } else {
-      const created = await createRol(form.value);
+      const created = await createRol(payload);
       roles.value.push(created);
+      tableSuccessMessage.value = 'Rol creado correctamente';
     }
 
     resetForm();
@@ -240,19 +197,33 @@ async function onSubmit() {
   }
 }
 
-function onEdit(rol: Rol) {
-  isEditing.value = true;
-  editingId.value = rol.id_rol;
-  form.value = {
-    nombre_rol: rol.nombre_rol,
-  };
+// submit desde el modal
+async function handleFormSubmit() {
+  await saveRol();
+  if (!error.value) {
+    showFormModal.value = false;
+  }
 }
 
-function onCancelEdit() {
+// cancelar desde el modal
+function handleCancelForm() {
   resetForm();
+  showFormModal.value = false;
 }
 
-async function onDelete(id_rol: number) {
+// Editar desde la tabla (GoogleTable @edit pasa la fila completa)
+function onEdit(row: Rol) {
+  isEditing.value = true;
+  editingId.value = row.id_rol;
+  form.value = {
+    nombre_rol: row.nombre_rol,
+  };
+  showFormModal.value = true;
+}
+
+// Eliminar desde la tabla
+async function onDelete(row: Rol) {
+  const id_rol = row.id_rol;
   if (!confirm(`¿Eliminar el rol #${id_rol}?`)) return;
   try {
     await deleteRol(id_rol);
@@ -260,6 +231,7 @@ async function onDelete(id_rol: number) {
     if (editingId.value === id_rol) {
       resetForm();
     }
+    tableSuccessMessage.value = 'Rol eliminado correctamente';
   } catch (e: any) {
     console.error(e);
     const backendMsg =
@@ -278,6 +250,26 @@ onMounted(loadRoles);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Animación suave tipo Google */
+.g-page-animate {
+  animation: g-fade-in 180ms ease-out;
+}
+
+@keyframes g-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-to-home {
+  margin-bottom: 0.5rem;
 }
 
 .page-header {
@@ -301,139 +293,7 @@ onMounted(loadRoles);
 .page-header-meta {
   display: flex;
   gap: 0.5rem;
-}
-
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #202124;
-}
-
-.card-subtitle {
-  font-size: 0.85rem;
-  color: #5f6368;
-}
-
-.card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Formulario */
-
-.form {
-  margin-top: 0.5rem;
-}
-
-.form-grid.single {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.9rem 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.field-label {
-  color: #5f6368;
-}
-
-.field-input {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  background-color: #ffffff;
-}
-
-.field-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.form-actions-left,
-.form-actions-right {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Botones */
-
-.btn {
-  border-radius: 999px;
-  border: none;
-  font-size: 0.9rem;
-  padding: 0.45rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-primary {
-  background: #1a73e8;
-  color: #ffffff;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.btn-text {
-  background: transparent;
-  color: #1a73e8;
-}
-
-.btn-text:hover {
-  background: rgba(26, 115, 232, 0.08);
-}
-
-/* Search */
-
-.search-input {
-  padding: 0.4rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  font-size: 0.85rem;
-  min-width: 260px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
 }
 
 /* Chips */
@@ -458,91 +318,17 @@ onMounted(loadRoles);
   color: #1a73e8;
 }
 
-/* Tabla */
+/* Formulario dentro del modal */
 
-.table-wrapper {
-  margin-top: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid #dadce0;
-  overflow: hidden;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #ffffff;
-}
-
-.table th,
-.table td {
-  padding: 0.55rem 0.75rem;
-  font-size: 0.85rem;
-}
-
-.table thead {
-  background: #f8f9fa;
-}
-
-.table th {
-  text-align: left;
-  font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
-}
-
-.table td {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
-}
-
-.row-editing {
-  background: #e8f0fe;
-}
-
-.col-actions {
-  width: 80px;
-}
-
-.cell-actions {
+.rol-form {
   display: flex;
-  gap: 0.25rem;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-/* Icon buttons */
-
-.icon-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 999px;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.9rem;
-}
-
-.icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
-}
-
-.icon-danger {
-  color: #d93025;
-}
-
-.icon-danger:hover {
-  background: rgba(217, 48, 37, 0.12);
-}
-
-/* Mensajes */
-
-.error {
-  color: #d93025;
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-}
-
-.empty {
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: #5f6368;
+.rol-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem 1rem;
 }
 </style>

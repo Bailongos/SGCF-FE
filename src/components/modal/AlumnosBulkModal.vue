@@ -130,7 +130,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { PropType } from 'vue';
-import BaseModal from '../BaseModal.vue';
+import BaseModal from './BaseModal.vue';
 import type { AlumnoCreate } from '../../services/alumnos';
 
 const props = defineProps<{
