@@ -29,7 +29,8 @@
           <strong>{{ formatMoney(totalPendiente) }}</strong>
         </span>
 
-        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
+        <!-- Nueva cuenta - Visible para Admin y Caja -->
+        <GoogleButton v-if="auth.isAdmin || auth.isCashier" size="sm" color="#1a73e8" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nueva cuenta
         </GoogleButton>
@@ -46,7 +47,7 @@
     <!-- Modal Crear / Editar cuenta -->
     <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit' : 'request_quote'"
       :title="isEditing ? 'Editar cuenta' : 'Nueva cuenta'"
-      subtitle="Registra un adeudo por alumno, ciclo y concepto (UADEC / ESCUELA)." maxWidth="760px"
+      subtitle="Registra un adeudo por alumno, ciclo y concepto configurado en catálogo." maxWidth="760px"
       density="comfortable" :confirmLoading="loadingSave" :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
       cancelText="Cancelar" @confirm="handleFormSubmit" @cancel="handleCancelForm">
       <form @submit.prevent="handleFormSubmit" class="cuenta-form">
@@ -99,6 +100,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 
 import GoogleButton from '../components/ui/button.vue';
 import GoogleInput from '../components/ui/input.vue';
@@ -116,17 +118,22 @@ import {
   type ConceptoCuenta,
 } from '../services/cuentas';
 import { getAlumnos, type Alumno } from '../services/alumnos';
-import { getCiclos, type Ciclo } from '../services/ciclos';
+import {
+  getCiclosEscolares,
+  type CicloEscolar,
+} from '../services/ciclos-escolares';
 import {
   getMetodosPago,
   type MetodoPago,
 } from '../services/metodo-pago';
+import { getConceptos, type Concepto } from '../services/conceptos';
 
-// ---- STATE ----
+const auth = useAuthStore();
 const cuentas = ref<Cuenta[]>([]);
 const alumnos = ref<Alumno[]>([]);
-const ciclos = ref<Ciclo[]>([]);
+const ciclos = ref<CicloEscolar[]>([]);
 const metodos = ref<MetodoPago[]>([]);
+const conceptos = ref<Concepto[]>([]);
 
 const loadingList = ref(false);
 const loadingSave = ref(false);
@@ -150,7 +157,7 @@ interface CuentaForm extends CuentaPayload {
 const form = ref<CuentaForm>({
   id_cuenta: null,
   matricula: '',
-  concepto: 'UADEC',
+  concepto: '',
   id_ciclo: 0,
   monto: 0,
   pagado: false,
@@ -173,10 +180,12 @@ const cicloOptions = computed<SelectOption[]>(() =>
   })),
 );
 
-const conceptoOptions: SelectOption[] = [
-  { value: 'UADEC', label: 'UADEC' },
-  { value: 'ESCUELA', label: 'ESCUELA' },
-];
+const conceptoOptions = computed<SelectOption[]>(() =>
+  conceptos.value.map((c) => ({
+    value: c.clave,
+    label: `${c.clave} - ${c.descripcion}`,
+  })),
+);
 
 const metodoOptions = computed<SelectOption[]>(() => [
   { value: 0, label: 'Sin especificar' },
@@ -189,11 +198,12 @@ const metodoOptions = computed<SelectOption[]>(() => [
 // ---- HELPERS ----
 function resetForm() {
   const firstCiclo = ciclos.value.length > 0 ? ciclos.value[0] : null;
+  const firstConcepto = conceptoOptions.value[0];
 
   form.value = {
     id_cuenta: null,
     matricula: '',
-    concepto: 'UADEC',
+    concepto: (firstConcepto?.value as ConceptoCuenta) ?? '',
     id_ciclo: firstCiclo ? firstCiclo.id_ciclo : 0,
     monto: 0,
     pagado: false,
@@ -303,21 +313,27 @@ const cuentasColumns: TableColumn[] = [
 // ---- LOADERS ----
 async function loadCatalogos() {
   try {
-    const [al, ci, mp] = await Promise.all([
+    const [al, ci, mp, co] = await Promise.all([
       getAlumnos(),
-      getCiclos(),
+      getCiclosEscolares(),
       getMetodosPago(),
+      getConceptos(),
     ]);
 
     alumnos.value = al;
     ciclos.value = ci;
     metodos.value = mp;
+    conceptos.value = co;
 
     if (!form.value.id_ciclo && ciclos.value.length > 0) {
       const firstCiclo = ciclos.value[0];
       if (firstCiclo) {
         form.value.id_ciclo = firstCiclo.id_ciclo;
       }
+    }
+
+    if (!form.value.concepto && conceptoOptions.value.length > 0) {
+      form.value.concepto = conceptoOptions.value[0]!.value as ConceptoCuenta;
     }
 
   } catch (e) {
@@ -370,9 +386,9 @@ async function saveCuenta() {
           : null,
     };
 
-    if (!payload.matricula || !payload.id_ciclo) {
+    if (!payload.matricula || !payload.id_ciclo || !payload.concepto) {
       error.value =
-        'La matrícula y el ciclo escolar son obligatorios.';
+        'La matrícula, el concepto y el ciclo escolar son obligatorios.';
       return;
     }
 
@@ -456,12 +472,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
 /* Animación suave tipo Google */
 .g-page-animate {
   animation: g-fade-in 180ms ease-out;

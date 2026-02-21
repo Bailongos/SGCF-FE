@@ -25,18 +25,11 @@
           Total: <strong>{{ ciclos.length }}</strong>
         </span>
 
-        <span
-          v-if="cicloActual"
-          class="chip chip-primary"
-        >
+        <span v-if="cicloActual" class="chip chip-primary">
           Ciclo actual: {{ cicloActual?.nombre }}
         </span>
 
-        <GoogleButton
-          size="sm"
-          color="#1a73e8"
-          @click="openCreateForm"
-        >
+        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nuevo ciclo
         </GoogleButton>
@@ -44,68 +37,32 @@
     </header>
 
     <!-- Tabla genérica googlesca -->
-    <GoogleTable
-      :rows="ciclos"
-      :columns="ciclosColumns"
-      rowKey="id_ciclo"
-      :loading="loadingList"
-      :error="error"
-      v-model:search="search"
-      title="Listado de ciclos escolares"
+    <GoogleTable :rows="ciclos" :columns="ciclosColumns" rowKey="id_ciclo" :loading="loadingList" :error="error"
+      v-model:search="search" title="Listado de ciclos escolares"
       subtitle="Consulta, edita o elimina ciclos registrados. Se recomienda tener solo un ciclo marcado como actual."
-      icon="date_range"
-      :showReload="true"
-      :useDefaultActions="true"
-      :searchKeys="['nombre']"
-      :successMessage="tableSuccessMessage"
-      emptyMessage="No hay ciclos que coincidan con el filtro."
-      @reload="loadCiclos"
-      @edit="onEdit"
-      @delete="onDelete"
-    />
+      icon="date_range" :showReload="true" :useDefaultActions="true" :searchKeys="['nombre']"
+      :successMessage="tableSuccessMessage" emptyMessage="No hay ciclos que coincidan con el filtro."
+      @reload="loadCiclos" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar ciclo con 2 datepickers -->
-    <GoogleModal
-      v-model="showFormModal"
-      :icon="isEditing ? 'edit_calendar' : 'event'"
+    <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit_calendar' : 'event'"
       :title="isEditing ? 'Editar ciclo escolar' : 'Nuevo ciclo escolar'"
-      subtitle="Registra los rangos de fechas oficiales y marca un ciclo como actual."
-      maxWidth="620px"
-      density="comfortable"
-      :confirmLoading="loadingSave"
-      :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
-      cancelText="Cancelar"
-      @confirm="handleFormSubmit"
-      @cancel="handleCancelForm"
-    >
+      subtitle="Registra los rangos de fechas oficiales y marca un ciclo como actual." maxWidth="620px"
+      density="comfortable" :confirmLoading="loadingSave" :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
+      cancelText="Cancelar" :showAddAnother="!isEditing" v-model:addAnother="addAnother" @confirm="handleFormSubmit"
+      @cancel="handleCancelForm">
       <form @submit.prevent="handleFormSubmit" class="ciclo-form">
-        <GoogleInput
-          v-model="form.nombre"
-          label="Nombre del ciclo *"
-          placeholder="Ej. Ago-Dic 2024"
-          required
-        />
+        <GoogleInput v-model="form.nombre" label="Nombre del ciclo *" placeholder="Ej. Ago-Dic 2024" required />
 
         <div class="ciclo-form-dates">
-          <GoogleCalendar
-            v-model="form.fecha_inicio"
-            label="Fecha de inicio *"
-            placeholder="Selecciona fecha de inicio"
-            clearable
-          />
-          <GoogleCalendar
-            v-model="form.fecha_fin"
-            label="Fecha de fin *"
-            placeholder="Selecciona fecha de fin"
-            clearable
-          />
+          <GoogleCalendar v-model="form.fecha_inicio" label="Fecha de inicio *" placeholder="Selecciona fecha de inicio"
+            clearable />
+          <GoogleCalendar v-model="form.fecha_fin" label="Fecha de fin *" placeholder="Selecciona fecha de fin"
+            clearable />
         </div>
 
         <label class="field-checkbox">
-          <input
-            v-model="form.es_actual"
-            type="checkbox"
-          />
+          <input v-model="form.es_actual" type="checkbox" />
           <span>Marcar como ciclo actual</span>
         </label>
       </form>
@@ -147,6 +104,8 @@ const tableSuccessMessage = ref<string | null>(null);
 
 // Modal formulario
 const showFormModal = ref(false);
+
+const addAnother = ref(false);
 
 // Formulario
 const form = ref<CicloEscolarPayload>({
@@ -226,6 +185,46 @@ async function loadCiclos() {
 function openCreateForm() {
   resetForm();
   isEditing.value = false;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1; // 1-12
+
+  let nombre = '';
+  let fecha_inicio = '';
+  let fecha_fin = '';
+
+  if (month >= 1 && month <= 6) {
+    // Primer semestre: Ene-Jun
+    nombre = `Ene-Jun ${year}`;
+    fecha_inicio = `${year}-01-01`;
+    fecha_fin = `${year}-06-30`;
+  } else {
+    // Segundo semestre: Ago-Dic
+    nombre = `Ago-Dic ${year}`;
+    fecha_inicio = `${year}-08-01`;
+    fecha_fin = `${year}-12-31`;
+  }
+
+  // Verificar si ya existe un ciclo con ese nombre
+  const existe = ciclos.value.some((c) => c.nombre === nombre);
+
+  if (existe) {
+    // Si ya existe el sugerido, abrimos el modal para que capturen uno manual.
+    form.value.nombre = '';
+    form.value.fecha_inicio = fecha_inicio;
+    form.value.fecha_fin = fecha_fin;
+    form.value.es_actual = false;
+    showFormModal.value = true;
+    return;
+  }
+
+  // Pre-llenar el formulario
+  form.value.nombre = nombre;
+  form.value.fecha_inicio = fecha_inicio;
+  form.value.fecha_fin = fecha_fin;
+  form.value.es_actual = false; // Por defecto no es actual
+
   showFormModal.value = true;
 }
 
@@ -282,7 +281,12 @@ async function saveCiclo() {
 async function handleFormSubmit() {
   await saveCiclo();
   if (!error.value) {
-    showFormModal.value = false;
+    if (addAnother.value && !isEditing.value) {
+      // ya saveCiclo hace resetForm y prepara el siguiente nombre sugerido
+      openCreateForm();
+    } else {
+      showFormModal.value = false;
+    }
   }
 }
 
@@ -332,12 +336,6 @@ onMounted(loadCiclos);
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
 /* Animación suave tipo Google */
 .g-page-animate {
   animation: g-fade-in 180ms ease-out;
@@ -348,6 +346,7 @@ onMounted(loadCiclos);
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
