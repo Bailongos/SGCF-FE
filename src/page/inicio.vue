@@ -55,6 +55,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
+import { PERMISSIONS } from '../security/permissions';
 
 interface ModuleItem {
   to: string;
@@ -64,7 +65,7 @@ interface ModuleItem {
   color: string;
   bgColor: string;
   featured?: boolean;
-  roleRequired?: string[];
+  permission: string;
 }
 
 type ModuleCard = ModuleItem & {
@@ -80,7 +81,7 @@ const modules: ModuleItem[] = [
     color: '#1a73e8',
     bgColor: '#e8f0fe',
     featured: true,
-    roleRequired: ['Administrador', 'Coordinador', 'Caja']
+    permission: PERMISSIONS.VIEW_DASHBOARD_ALUMNOS,
   },
   {
     to: '/alumnos',
@@ -89,7 +90,7 @@ const modules: ModuleItem[] = [
     desc: 'Gestión de matrículas y expedientes.',
     color: '#1a73e8',
     bgColor: '#e8f0fe',
-    roleRequired: ['Administrador', 'Coordinador']
+    permission: PERMISSIONS.VIEW_ALUMNOS,
   },
   {
     to: '/cuentas',
@@ -98,7 +99,7 @@ const modules: ModuleItem[] = [
     desc: 'Control de adeudos y cobranza.',
     color: '#ea4335',
     bgColor: '#fce8e6',
-    roleRequired: ['Administrador', 'Caja']
+    permission: PERMISSIONS.VIEW_CUENTAS,
   },
   {
     to: '/ciclos-escolares',
@@ -107,7 +108,7 @@ const modules: ModuleItem[] = [
     desc: 'Configuración de períodos académicos.',
     color: '#34a853',
     bgColor: '#e6f4ea',
-    roleRequired: ['Administrador']
+    permission: PERMISSIONS.VIEW_CICLOS,
   },
   {
     to: '/carreras',
@@ -116,7 +117,7 @@ const modules: ModuleItem[] = [
     desc: 'Administración de carreras y semestres.',
     color: '#f9ab00',
     bgColor: '#fef7e0',
-    roleRequired: ['Administrador']
+    permission: PERMISSIONS.VIEW_CARRERAS,
   },
   {
     to: '/metodos-pago',
@@ -125,7 +126,7 @@ const modules: ModuleItem[] = [
     desc: 'Configuración de formas de pago aceptadas.',
     color: '#1a73e8',
     bgColor: '#e8f0fe',
-    roleRequired: ['Administrador', 'Caja']
+    permission: PERMISSIONS.VIEW_METODOS_PAGO,
   },
   {
     to: '/conceptos',
@@ -134,16 +135,16 @@ const modules: ModuleItem[] = [
     desc: 'Catálogo de trámites y costos.',
     color: '#7b1fa2',
     bgColor: '#f3e5f5',
-    roleRequired: ['Administrador']
+    permission: PERMISSIONS.VIEW_CONCEPTOS,
   },
   {
-    to: '/usuarios',
+    to: '/admin/usuarios-permisos',
     icon: 'group',
-    title: 'Usuarios',
-    desc: 'Control de cuentas y administración.',
+    title: 'Usuarios y Permisos',
+    desc: 'Gestión administrativa de roles, alcance y accesos SSO.',
     color: '#5f6368',
     bgColor: '#f1f3f4',
-    roleRequired: ['Administrador']
+    permission: PERMISSIONS.VIEW_ADMIN_USUARIOS,
   },
   {
     to: '/roles',
@@ -152,7 +153,7 @@ const modules: ModuleItem[] = [
     desc: 'Permisos y políticas del sistema.',
     color: '#5f6368',
     bgColor: '#f1f3f4',
-    roleRequired: ['Administrador']
+    permission: PERMISSIONS.VIEW_ROLES,
   },
   {
     to: '/observaciones',
@@ -160,17 +161,16 @@ const modules: ModuleItem[] = [
     title: 'Observaciones',
     desc: 'Seguimiento y bitácora operativa.',
     color: '#1a73e8',
-    bgColor: '#e8f0fe'
+    bgColor: '#e8f0fe',
+    permission: PERMISSIONS.VIEW_OBSERVACIONES,
   },
 ];
 
 const auth = useAuthStore();
 
 const modulesWithAccess = computed<ModuleCard[]>(() => {
-  const role = auth.user?.rol_nombre;
-
   return modules.map((module) => {
-    const allowed = auth.isAdmin || !module.roleRequired?.length || (!!role && module.roleRequired.includes(role));
+    const allowed = auth.can(module.permission);
 
     return {
       ...module,
@@ -239,8 +239,7 @@ onMounted(() => {
   box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.1), 0 1px 3px 1px rgba(60, 64, 67, 0.05);
   position: relative;
   overflow: hidden;
-  opacity: 0;
-  /* Controlado por animación */
+  opacity: 1;
 }
 
 .module-card:hover {

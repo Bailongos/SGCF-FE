@@ -1,32 +1,14 @@
 <!-- src/components/ui/table.vue -->
 <template>
-  <SectionCard
-    class="g-table-card"
-    :icon="icon"
-    :title="titleToShow"
-    :subtitle="subtitleToShow"
-    density="comfortable"
-  >
+  <SectionCard class="g-table-card" :icon="icon" :title="titleToShow" :subtitle="subtitleToShow" density="comfortable">
     <!-- Header derecho: search + recargar -->
     <template #header-extra>
       <div class="g-table-header-right">
-        <GoogleInput
-          v-if="showSearch"
-          v-model="localSearch"
-          class="g-table-search-input"
-          placeholder="Buscar..."
-          size="sm"
-          label=""
-        />
+        <GoogleInput v-if="showSearch" v-model="localSearch" class="g-table-search-input" placeholder="Buscar..."
+          size="sm" label="" />
 
-        <GoogleButton
-          v-if="showReload"
-          variant="text"
-          size="sm"
-          :loading="loading"
-          :disabled="loading"
-          @click="$emit('reload')"
-        >
+        <GoogleButton v-if="showReload" variant="text" size="sm" :loading="loading" :disabled="loading"
+          @click="$emit('reload')">
           Recargar
         </GoogleButton>
       </div>
@@ -34,10 +16,7 @@
 
     <!-- Mensaje de éxito tipo toast interno -->
     <transition name="g-toast-fade">
-      <div
-        v-if="successMessage"
-        class="g-table-toast"
-      >
+      <div v-if="successMessage" class="g-table-toast">
         <span class="material-symbols-outlined g-table-toast-icon">
           check_circle
         </span>
@@ -53,57 +32,30 @@
       <table class="g-table">
         <thead>
           <tr>
-            <th
-              v-for="col in columns"
-              :key="String(col.key)"
-              :style="col.width ? { width: col.width } : undefined"
-              class="g-table-header-cell"
-              :class="col.align ? `g-table-header-cell--${col.align}` : ''"
-            >
+            <th v-for="col in columns" :key="String(col.key)" :style="col.width ? { width: col.width } : undefined"
+              class="g-table-header-cell" :class="col.align ? `g-table-header-cell--${col.align}` : ''">
               {{ col.label }}
             </th>
 
-            <th
-              v-if="useDefaultActions"
-              class="g-table-header-cell g-table-header-cell--right g-table-header-actions"
-            >
+            <th v-if="useDefaultActions" class="g-table-header-cell g-table-header-cell--right g-table-header-actions">
               Acciones
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="row in filteredRows"
-            :key="getRowKey(row)"
-          >
-            <td
-              v-for="col in columns"
-              :key="String(col.key)"
-              class="g-table-cell"
-              :class="col.align ? `g-table-cell--${col.align}` : ''"
-            >
+          <tr v-for="row in filteredRows" :key="getRowKey(row)">
+            <td v-for="col in columns" :key="String(col.key)" class="g-table-cell"
+              :class="col.align ? `g-table-cell--${col.align}` : ''">
               {{ formatCell(row, col) }}
             </td>
 
-            <td
-              v-if="useDefaultActions"
-              class="g-table-cell g-table-cell--right g-table-cell-actions"
-            >
-              <button
-                type="button"
-                class="g-icon-button"
-                title="Editar"
-                @click="$emit('edit', row)"
-              >
-                ✏️
+            <td v-if="useDefaultActions" class="g-table-cell g-table-cell--right g-table-cell-actions">
+              <button type="button" class="g-icon-button" title="Editar" @click="$emit('edit', row)">
+                <span class="material-symbols-outlined">edit</span>
               </button>
-              <button
-                type="button"
-                class="g-icon-button g-icon-button--danger"
-                title="Eliminar"
-                @click="$emit('delete', row)"
-              >
-                🗑️
+              <button type="button" class="g-icon-button g-icon-button--danger" title="Eliminar"
+                @click="$emit('delete', row)">
+                <span class="material-symbols-outlined">delete</span>
               </button>
             </td>
           </tr>
@@ -263,7 +215,8 @@ const filteredRows = computed(() => {
   margin-top: 0.75rem;
   border-radius: 12px;
   border: 1px solid #dadce0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .g-table {
@@ -321,24 +274,35 @@ const filteredRows = computed(() => {
 /* Icon buttons */
 
 .g-icon-button {
-  border: none;
-  background: transparent;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #c6dafc;
+  background: #e8f0fe;
+  color: #174ea6;
   cursor: pointer;
-  border-radius: 999px;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.9rem;
+  border-radius: 8px;
+  padding: 0;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
 .g-icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: #dbe7fd;
+  border-color: #afc9f7;
 }
 
 .g-icon-button--danger {
+  border-color: #f6c8c4;
+  background: #fdeceb;
   color: #d93025;
 }
 
 .g-icon-button--danger:hover {
-  background: rgba(217, 48, 37, 0.12);
+  background: #fbd6d3;
+  border-color: #efb2ab;
 }
 
 /* Estados */

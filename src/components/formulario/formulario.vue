@@ -1,16 +1,16 @@
 <!-- src/components/formulario/GenericForm.vue -->
 <template>
-  <SectionCard
-    class="g-form"
-    icon="assignment"
-    :title="titleToShow"
-    :subtitle="subtitleToShow"
-    density="comfortable"
-  >
-    <!-- Slot para meter algo en el header derecho (ej. chip "Editando: X") -->
-    <template #header-right>
-      <slot name="header-right" />
-    </template>
+  <div class="g-form">
+    <!-- Header Opcional si se quiere mostrar el título independientemente del modal -->
+    <header class="g-form-header" v-if="titleToShow || subtitleToShow">
+      <div>
+        <h2 v-if="titleToShow" class="g-form-title">{{ titleToShow }}</h2>
+        <p v-if="subtitleToShow" class="g-form-subtitle">{{ subtitleToShow }}</p>
+      </div>
+      <div class="g-form-header-right">
+        <slot name="header-right" />
+      </div>
+    </header>
 
     <!-- Mensaje de error simple (viene por prop) -->
     <p v-if="errorToShow" class="g-form-error">
@@ -29,13 +29,7 @@
         <div class="g-form-actions-left">
           <!-- Slot opcional para personalizar acciones izquierdas -->
           <slot name="actions-left">
-            <GoogleButton
-              v-if="showCancel"
-              type="button"
-              variant="text"
-              color="#5f6368"
-              @click="onCancelClick"
-            >
+            <GoogleButton v-if="showCancel" type="button" variant="text" color="#5f6368" @click="onCancelClick">
               {{ cancelLabelToShow }}
             </GoogleButton>
           </slot>
@@ -44,11 +38,7 @@
         <div class="g-form-actions-right">
           <!-- Slot opcional para acciones derechas extra -->
           <slot name="actions-right">
-            <GoogleButton
-              type="submit"
-              :loading="submitting"
-              :disabled="submitting"
-            >
+            <GoogleButton type="submit" :loading="submitting" :disabled="submitting">
               {{ submitLabelToShow }}
             </GoogleButton>
           </slot>
@@ -57,23 +47,16 @@
     </form>
 
     <!-- Confirm para cancelar -->
-    <GoogleConfirmDialog
-      v-model="confirmVisible"
-      type="danger"
-      title="¿Descartar cambios?"
-      message="Perderás la información capturada en el formulario."
-      confirmText="Sí, descartar"
-      cancelText="Seguir editando"
-      @confirm="doCancel"
-    />
-  </SectionCard>
+    <GoogleConfirmDialog v-model="confirmVisible" type="danger" title="¿Descartar cambios?"
+      message="Perderás la información capturada en el formulario." confirmText="Sí, descartar"
+      cancelText="Seguir editando" @confirm="doCancel" />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 
 // UI googlesca
-import SectionCard from '../layout/sideCard.vue'; // ajusta la ruta si tu SectionCard está en otro lado
 import GoogleButton from '../ui/button.vue';
 import GoogleConfirmDialog from '../modal/alert.vue';
 
@@ -152,6 +135,32 @@ function doCancel() {
   gap: 1.25rem;
 }
 
+.g-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.g-form-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #202124;
+}
+
+.g-form-subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: #5f6368;
+}
+
+.g-form-header-right {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .g-form-error {
   font-size: 0.85rem;
   color: #d93025;
@@ -166,8 +175,10 @@ function doCancel() {
 
 .g-form-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 2 columns is better than 3 for most screens */
+  gap: 1.25rem 1.5rem;
+  padding: 0 0.25rem;
 }
 
 @media (max-width: 768px) {

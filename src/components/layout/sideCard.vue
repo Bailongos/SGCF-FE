@@ -1,19 +1,12 @@
 <template>
-  <section
-    class="g-section-card"
-    :class="[
-      `g-section-card--${densityClass}`,
-      { 'g-section-card--clickable': clickable }
-    ]"
-    @click="handleClick"
-  >
+  <section class="g-section-card" :class="[
+    `g-section-card--${densityClass}`,
+    { 'g-section-card--clickable': clickable }
+  ]" @click="handleClick">
     <!-- Header -->
     <header v-if="hasHeader" class="g-section-card__header">
       <div class="g-section-card__title-wrap">
-        <span
-          v-if="icon"
-          class="material-symbols-outlined g-section-card__icon"
-        >
+        <span v-if="icon" class="material-symbols-outlined g-section-card__icon">
           {{ icon }}
         </span>
 
@@ -28,10 +21,7 @@
       </div>
 
       <!-- Acciones extra en header -->
-      <div
-        v-if="slots['header-extra']"
-        class="g-section-card__header-extra"
-      >
+      <div v-if="slots['header-extra']" class="g-section-card__header-extra">
         <slot name="header-extra" />
       </div>
     </header>
@@ -98,20 +88,22 @@ function handleClick() {
     'Segoe UI', sans-serif;
   animation: g-section-card-enter 0.24s ease-out;
   transform-origin: top center;
-  overflow: hidden;
+  overflow: visible;
+  /* Changed from hidden to avoid clipping shadows/focus */
 }
 
 /* densidad */
 .g-section-card--comfortable {
-  padding: 1.25rem 1.4rem;
+  padding: 1.5rem 1.75rem;
+  /* Increased for better breathing room */
 }
 
 .g-section-card--cozy {
-  padding: 1rem 1.2rem;
+  padding: 1.25rem 1.4rem;
 }
 
 .g-section-card--compact {
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
 }
 
 /* clickable */
@@ -204,6 +196,7 @@ function handleClick() {
     opacity: 0;
     transform: translateY(4px) scale(0.99);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -212,20 +205,23 @@ function handleClick() {
 
 /* Responsive */
 @media (max-width: 768px) {
+
   .g-section-card--comfortable,
   .g-section-card--cozy,
   .g-section-card--compact {
-    padding: 0.9rem 1rem;
+    padding: 1.1rem 1.25rem;
   }
 
   .g-section-card__header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.5rem;
   }
 
   .g-section-card__header-extra {
     align-self: stretch;
     justify-content: flex-start;
+    margin-top: 0.25rem;
   }
 }
 </style>

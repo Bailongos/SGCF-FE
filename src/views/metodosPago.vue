@@ -24,11 +24,7 @@
           Total: <strong>{{ metodos.length }}</strong>
         </span>
 
-        <GoogleButton
-          size="sm"
-          color="#1a73e8"
-          @click="openCreateForm"
-        >
+        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nuevo método
         </GoogleButton>
@@ -36,48 +32,24 @@
     </header>
 
     <!-- Tabla genérica googlesca -->
-    <GoogleTable
-      :rows="metodos"
-      :columns="metodosColumns"
-      rowKey="id_metodo"
-      :loading="loadingList"
-      :error="error"
-      v-model:search="search"
-      title="Listado de métodos de pago"
+    <GoogleTable :rows="metodos" :columns="metodosColumns" rowKey="id_metodo" :loading="loadingList" :error="error"
+      v-model:search="search" title="Listado de métodos de pago"
       subtitle="Edita o elimina métodos existentes. Solo se recomienda eliminar métodos que no tengan movimientos asociados."
-      icon="payments"
-      :showReload="true"
-      :useDefaultActions="true"
-      :searchKeys="['nombre']"
-      :successMessage="tableSuccessMessage"
-      emptyMessage="No hay métodos que coincidan con el filtro."
-      @reload="loadMetodos"
-      @edit="onEdit"
-      @delete="onDelete"
-    />
+      icon="payments" :showReload="true" :useDefaultActions="true" :searchKeys="['nombre']"
+      :successMessage="tableSuccessMessage" emptyMessage="No hay métodos que coincidan con el filtro."
+      @reload="loadMetodos" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar método -->
-    <GoogleModal
-      v-model="showFormModal"
-      :icon="isEditing ? 'edit' : 'payments'"
+    <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit' : 'payments'"
       :title="isEditing ? 'Editar método de pago' : 'Nuevo método de pago'"
       subtitle="Define nombres claros para identificar fácilmente cada forma de pago (efectivo, tarjeta, transferencia, etc.)."
-      maxWidth="520px"
-      density="comfortable"
-      :confirmLoading="loadingSave"
-      :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
-      cancelText="Cancelar"
-      @confirm="handleFormSubmit"
-      @cancel="handleCancelForm"
-    >
+      maxWidth="520px" density="comfortable" :confirmLoading="loadingSave"
+      :confirmText="isEditing ? 'Actualizar' : 'Guardar'" cancelText="Cancelar" @confirm="handleFormSubmit"
+      @cancel="handleCancelForm">
       <form @submit.prevent="handleFormSubmit" class="metodo-form">
         <div class="metodo-form-grid">
-          <GoogleInput
-            v-model="form.nombre"
-            label="Nombre del método *"
-            placeholder="Ej. Efectivo, Tarjeta Débito/Crédito, Transferencia"
-            required
-          />
+          <GoogleInput v-model="form.nombre" label="Nombre del método *"
+            placeholder="Ej. Efectivo, Tarjeta Débito/Crédito, Transferencia" required />
         </div>
         <!-- Botones los maneja el footer del modal -->
       </form>
@@ -86,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import GoogleButton from '../components/ui/button.vue';
@@ -135,14 +107,6 @@ const metodosColumns: TableColumn[] = [
   { key: 'id_metodo', label: '#', width: '70px', align: 'left' },
   { key: 'nombre', label: 'Nombre' },
 ];
-
-const filteredMetodos = computed(() => {
-  if (!search.value.trim()) return metodos.value;
-  const term = search.value.toLowerCase();
-  return metodos.value.filter((m) =>
-    m.nombre.toLowerCase().includes(term),
-  );
-});
 
 // Carga de métodos
 async function loadMetodos() {
@@ -254,12 +218,6 @@ onMounted(loadMetodos);
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
 /* Animación suave tipo Google */
 .g-page-animate {
   animation: g-fade-in 180ms ease-out;
@@ -270,6 +228,7 @@ onMounted(loadMetodos);
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

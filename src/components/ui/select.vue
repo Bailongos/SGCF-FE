@@ -2,7 +2,8 @@
 <template>
   <div
     class="g-select-wrapper"
-    :class="[`g-select--${size}`, { 'g-select--disabled': disabled }]"
+    :class="[`g-select--${size}`, { 'g-select--disabled': disabled }, attrsClass]"
+    :style="attrsStyle"
     ref="wrapperRef"
   >
     <label v-if="label" class="g-select-label">
@@ -13,10 +14,12 @@
       class="g-select-container"
       :style="{ '--g-select-focus': color }"
       @click="onContainerClick"
+      ref="containerRef"
     >
       <input
         class="g-select-input"
         type="text"
+        v-bind="inputAttrs"
         :placeholder="placeholder"
         v-model="search"
         :disabled="disabled"
@@ -37,26 +40,29 @@
       </span>
     </div>
 
-    <!-- Lista desplegable -->
-    <transition name="g-select-fade">
-      <ul
-        v-if="isOpen && filteredOptions.length"
-        class="g-select-list"
-      >
-        <li
-          v-for="(opt, index) in filteredOptions"
-          :key="opt.value"
-          class="g-select-option"
-          :class="{
-            'g-select-option--selected': opt.value === modelValue,
-            'g-select-option--highlighted': index === highlightedIndex,
-          }"
-          @mousedown.prevent="selectOption(opt)"
+    <!-- Lista desplegable TELEPORTADA -->
+    <Teleport to="body">
+      <transition name="g-select-fade">
+        <ul
+          v-if="isOpen && filteredOptions.length"
+          class="g-select-list"
+          :style="dropdownStyle"
         >
-          {{ opt.label }}
-        </li>
-      </ul>
-    </transition>
+          <li
+            v-for="(opt, index) in filteredOptions"
+            :key="String(opt.value)"
+            class="g-select-option"
+            :class="{
+              'g-select-option--selected': opt.value === modelValue,
+              'g-select-option--highlighted': index === highlightedIndex,
+            }"
+            @mousedown.prevent="selectOption(opt)"
+          >
+            {{ opt.label }}
+          </li>
+        </ul>
+      </transition>
+    </Teleport>
 
     <p v-if="error" class="g-select-error">
       {{ error }}
@@ -71,13 +77,20 @@ import {
   onMounted,
   onBeforeUnmount,
   watch,
+  nextTick,
+  useAttrs,
+  type StyleValue,
 } from 'vue';
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 type Size = 'sm' | 'md' | 'lg';
 
 export interface SelectOption {
   label: string;
-  value: string | number;
+  value: string | number | null;
 }
 
 const props = defineProps<{
@@ -102,11 +115,30 @@ const size = computed<Size>(() => props.size ?? 'md');
 const color = computed(() => props.color ?? '#1a73e8');
 const disabled = computed(() => props.disabled ?? false);
 const error = computed(() => props.errorMessage ?? null);
+const attrs = useAttrs();
+
+const attrsClass = computed(() => attrs.class as unknown);
+const attrsStyle = computed(() => attrs.style as StyleValue | undefined);
+
+const inputAttrs = computed(() => {
+  const rest = { ...attrs } as Record<string, unknown>;
+  delete rest.class;
+  delete rest.style;
+  return rest;
+});
 
 const wrapperRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
 const isOpen = ref(false);
 const search = ref('');
 const highlightedIndex = ref<number>(-1);
+
+// Posición dinámica del dropdown
+const dropdownStyle = ref<{ top: string; left: string; width: string }>({
+  top: '0',
+  left: '0',
+  width: '150px',
+});
 
 // Opción seleccionada (si el padre manda un valor)
 const selectedOption = computed(() =>
@@ -139,6 +171,18 @@ const filteredOptions = computed(() => {
   );
 });
 
+// Calcular posición del dropdown
+function updateDropdownPosition() {
+  if (!containerRef.value) return;
+  
+  const rect = containerRef.value.getBoundingClientRect();
+  dropdownStyle.value = {
+    top: `${rect.bottom + window.scrollY + 2}px`,
+    left: `${rect.left + window.scrollX}px`,
+    width: `${rect.width}px`,
+  };
+}
+
 // Abrir/cerrar
 function open() {
   if (disabled.value) return;
@@ -150,11 +194,20 @@ function open() {
   highlightedIndex.value = filteredOptions.value.findIndex(
     (o) => o.value === props.modelValue,
   );
+
+  // Calcular posición después de que se abre
+  nextTick(() => {
+    updateDropdownPosition();
+    window.addEventListener('scroll', updateDropdownPosition);
+    window.addEventListener('resize', updateDropdownPosition);
+  });
 }
 
 function close() {
   isOpen.value = false;
   highlightedIndex.value = -1;
+  window.removeEventListener('scroll', updateDropdownPosition);
+  window.removeEventListener('resize', updateDropdownPosition);
 
   // Al cerrar, si hay valor, mostramos su etiqueta;
   // si NO hay valor, dejamos el input vacío → placeholder visible
@@ -252,6 +305,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('scroll', updateDropdownPosition);
+  window.removeEventListener('resize', updateDropdownPosition);
 });
 </script>
 
@@ -271,7 +326,7 @@ onBeforeUnmount(() => {
 }
 
 .g-select-container {
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid #dadce0;
   background-color: #ffffff;
   display: flex;
@@ -289,7 +344,7 @@ onBeforeUnmount(() => {
   outline: none;
   background: transparent;
   padding: 0.4rem 0.7rem;
-  border-radius: 999px;
+  border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
   color: #202124;
@@ -337,17 +392,14 @@ onBeforeUnmount(() => {
   transform: rotate(180deg);
 }
 
-/* Lista ABAJO del input */
+/* Lista TELEPORTADA con posición fixed */
 .g-select-list {
-  position: absolute;
-  z-index: 10;
-  left: 0;
-  top: 100%;          /* siempre debajo */
-  margin-top: 0.25rem;
+  position: fixed;
+  z-index: 9999;
   padding: 0.25rem 0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 4px 8px rgba(60, 64, 67, 0.25);
+  box-shadow: 0 4px 12px rgba(60, 64, 67, 0.3), 0 2px 4px rgba(60, 64, 67, 0.15);
   max-height: 220px;
   overflow-y: auto;
   list-style: none;

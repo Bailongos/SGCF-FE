@@ -25,11 +25,7 @@
           Total: <strong>{{ observaciones.length }}</strong>
         </span>
 
-        <GoogleButton
-          size="sm"
-          color="#1a73e8"
-          @click="openCreateForm"
-        >
+        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nueva observación
         </GoogleButton>
@@ -37,58 +33,28 @@
     </header>
 
     <!-- Tabla genérica googlesca -->
-    <GoogleTable
-      :rows="tableRows"
-      :columns="observacionesColumns"
-      rowKey="id_observacion"
-      :loading="loadingList"
-      :error="error"
-      v-model:search="search"
-      title="Listado de observaciones"
-      subtitle="Consulta, edita o elimina observaciones registradas."
-      icon="speaker_notes"
-      :showReload="true"
-      :useDefaultActions="true"
-      :searchKeys="['matricula', 'alumno_nombre', 'autor_nombre', 'detalle']"
-      :successMessage="tableSuccessMessage"
-      emptyMessage="No hay observaciones que coincidan con el filtro."
-      @reload="loadObservaciones"
-      @edit="onEdit"
-      @delete="onDelete"
-    />
+    <GoogleTable :rows="tableRows" :columns="observacionesColumns" rowKey="id_observacion" :loading="loadingList"
+      :error="error" v-model:search="search" title="Listado de observaciones"
+      subtitle="Consulta, edita o elimina observaciones registradas." icon="speaker_notes" :showReload="true"
+      :useDefaultActions="true" :searchKeys="['matricula', 'alumno_nombre', 'autor_nombre', 'taller_label', 'detalle']"
+      :successMessage="tableSuccessMessage" emptyMessage="No hay observaciones que coincidan con el filtro."
+      @reload="loadObservaciones" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar observación -->
-    <GoogleModal
-      v-model="showFormModal"
-      :icon="isEditing ? 'edit_note' : 'note_add'"
+    <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit_note' : 'note_add'"
       :title="isEditing ? 'Editar observación' : 'Nueva observación'"
       subtitle="Relaciona una observación con un alumno y, opcionalmente, con el usuario que la registra."
-      maxWidth="780px"
-      density="comfortable"
-      :confirmLoading="loadingSave"
-      :confirmText="isEditing ? 'Actualizar' : 'Guardar'"
-      cancelText="Cancelar"
-      @confirm="handleFormSubmit"
-      @cancel="handleCancelForm"
-    >
+      maxWidth="780px" density="comfortable" :confirmLoading="loadingSave"
+      :confirmText="isEditing ? 'Actualizar' : 'Guardar'" cancelText="Cancelar" @confirm="handleFormSubmit"
+      @cancel="handleCancelForm">
       <form @submit.prevent="handleFormSubmit" class="obs-form">
         <div class="obs-form-grid">
           <!-- Matrícula / alumno -->
           <div class="field">
             <span class="field-label">Matrícula *</span>
-            <input
-              v-model="form.matricula"
-              list="alumnos-list"
-              required
-              class="field-input"
-              placeholder="Ej. 180054"
-            />
+            <input v-model="form.matricula" list="alumnos-list" required class="field-input" placeholder="Ej. 180054" />
             <datalist id="alumnos-list">
-              <option
-                v-for="al in alumnos"
-                :key="al.matricula"
-                :value="al.matricula"
-              >
+              <option v-for="al in alumnos" :key="al.matricula" :value="al.matricula">
                 {{ al.matricula }} · {{ al.nombre_completo }}
               </option>
             </datalist>
@@ -100,18 +66,10 @@
           <!-- Autor (texto + sugerencias) -->
           <div class="field">
             <span class="field-label">Autor</span>
-            <input
-              v-model="form.autorTexto"
-              list="usuarios-list"
-              class="field-input"
-              placeholder="Escribe un usuario o texto libre..."
-            />
+            <input v-model="form.autorTexto" list="usuarios-list" class="field-input"
+              placeholder="Escribe un usuario o texto libre..." />
             <datalist id="usuarios-list">
-              <option
-                v-for="u in usuarios"
-                :key="u.id_usuario"
-                :value="u.username"
-              >
+              <option v-for="u in usuarios" :key="u.id_usuario" :value="u.username">
                 {{ u.username }}
               </option>
             </datalist>
@@ -126,23 +84,24 @@
           <!-- Fecha (solo lectura, viene del backend) -->
           <div class="field">
             <span class="field-label">Fecha (solo lectura)</span>
-            <input
-              class="field-input field-input-readonly"
-              :value="form.fecha ? formatDate(form.fecha) : 'Se asigna automáticamente'"
-              readonly
-            />
+            <input class="field-input field-input-readonly"
+              :value="form.fecha ? formatDate(form.fecha) : 'Se asigna automáticamente'" readonly />
+          </div>
+
+          <div class="field">
+            <span class="field-label">Taller / canalización *</span>
+            <select v-model="form.taller" required class="field-input">
+              <option v-for="option in TALLER_OPTIONS" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
           </div>
 
           <!-- Detalle -->
           <div class="field field-full">
             <span class="field-label">Detalle *</span>
-            <textarea
-              v-model="form.detalle"
-              required
-              class="field-input field-textarea"
-              rows="3"
-              placeholder="Escribe aquí la observación..."
-            ></textarea>
+            <textarea v-model="form.detalle" required class="field-input field-textarea" rows="3"
+              placeholder="Escribe aquí la observación..."></textarea>
           </div>
         </div>
         <!-- Botones los maneja el footer del modal -->
@@ -154,6 +113,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 
 import GoogleButton from '../components/ui/button.vue';
 import GoogleModal from '../components/modal/modal.vue';
@@ -187,11 +147,49 @@ const tableSuccessMessage = ref<string | null>(null);
 
 // Modal formulario
 const showFormModal = ref(false);
+const auth = useAuthStore();
+
+const TALLER_OPTIONS = [
+  { value: 'canalización académica', label: 'Canalización académica' },
+  { value: 'canalización psicológica', label: 'Canalización psicológica' },
+  { value: 'baja', label: 'Baja' },
+  { value: 'otro', label: 'Otro' },
+];
+
+function normalizeTaller(value: unknown): string {
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (normalized === 'canalizacion academica') return 'canalización académica';
+  if (normalized === 'canalizacion psicologica') return 'canalización psicológica';
+  if (normalized === 'baja') return 'baja';
+  if (normalized === 'otro') return 'otro';
+  return 'otro';
+}
+
+function getTallerLabel(value: unknown): string {
+  const normalized = normalizeTaller(value);
+  const found = TALLER_OPTIONS.find((option) => option.value === normalized);
+  return found?.label ?? 'Otro';
+}
+
+function getCurrentUserId(): number | null {
+  const parsed = Number(auth.user?.id_usuario ?? 0);
+  return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
+}
+
+function getCurrentUsername(): string {
+  return String(auth.user?.username ?? '').trim();
+}
 
 interface ObservacionForm {
   id_observacion: number | null;
   matricula: string;
   detalle: string;
+  taller: string;
   id_autor: number | null;
   fecha: string | null;
   autorTexto: string; // lo que escribe el usuario en el input de autor
@@ -201,9 +199,10 @@ const form = ref<ObservacionForm>({
   id_observacion: null,
   matricula: '',
   detalle: '',
-  id_autor: null,
+  taller: 'otro',
+  id_autor: getCurrentUserId(),
   fecha: null,
-  autorTexto: '',
+  autorTexto: getCurrentUsername(),
 });
 
 function resetForm() {
@@ -211,9 +210,10 @@ function resetForm() {
     id_observacion: null,
     matricula: '',
     detalle: '',
-    id_autor: null,
+    taller: 'otro',
+    id_autor: getCurrentUserId(),
     fecha: null,
-    autorTexto: '',
+    autorTexto: getCurrentUsername(),
   };
   isEditing.value = false;
 }
@@ -242,6 +242,7 @@ const tableRows = computed(() =>
     ...o,
     alumno_nombre: getAlumnoNombre(o.matricula),
     autor_nombre: getAutorNombre(o.id_autor ?? null),
+    taller_label: getTallerLabel(o.taller),
     fecha_corta: formatDate(o.fecha ?? null),
   })),
 );
@@ -252,6 +253,7 @@ const observacionesColumns: TableColumn[] = [
   { key: 'matricula', label: 'Matrícula' },
   { key: 'alumno_nombre', label: 'Alumno' },
   { key: 'autor_nombre', label: 'Autor' },
+  { key: 'taller_label', label: 'Taller' },
   { key: 'detalle', label: 'Detalle' },
   { key: 'fecha_corta', label: 'Fecha', width: '110px' },
 ];
@@ -297,18 +299,27 @@ async function saveObservacion() {
 
     // intentar matchear el texto con un usuario existente
     const autorTexto = form.value.autorTexto.trim();
+    const currentUserId = getCurrentUserId();
+    const currentUsername = getCurrentUsername().toLowerCase();
     let autorId: number | null = null;
 
     if (autorTexto) {
       const found = usuarios.value.find(
         (u) => u.username.toLowerCase() === autorTexto.toLowerCase(),
       );
-      autorId = found ? found.id_usuario : null;
+      if (found) {
+        autorId = found.id_usuario;
+      } else if (currentUserId && autorTexto.toLowerCase() === currentUsername) {
+        autorId = currentUserId;
+      }
+    } else {
+      autorId = currentUserId;
     }
 
     const payload: ObservacionPayload = {
       matricula: form.value.matricula.trim(),
       detalle: form.value.detalle.trim(),
+      taller: normalizeTaller(form.value.taller),
       id_autor: autorId,
     };
 
@@ -367,6 +378,7 @@ function onEdit(row: Observacion) {
     id_observacion: row.id_observacion,
     matricula: row.matricula,
     detalle: row.detalle,
+    taller: normalizeTaller(row.taller),
     id_autor: row.id_autor ?? null,
     fecha: row.fecha ?? null,
     autorTexto: autorNombre,
@@ -401,12 +413,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
 /* Animación suave tipo Google */
 .g-page-animate {
   animation: g-fade-in 180ms ease-out;
@@ -417,6 +423,7 @@ onMounted(async () => {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

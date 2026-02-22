@@ -1,5 +1,5 @@
 // src/services/alumnos.ts
-import { api } from './api.ts';
+import { api } from './api';
 
 export interface Alumno {
   matricula: string;

@@ -18,12 +18,12 @@
           Pendiente: <strong>{{ formatMoney(totalPendiente) }}</strong>
         </span>
 
-        <GoogleButton v-if="auth.isAdmin" size="sm" color="#1a73e8" @click="showCarrerasManager = true">
+        <GoogleButton v-if="auth.can('action.catalogos.manage')" size="sm" color="#1a73e8" @click="showCarrerasManager = true">
           <span class="material-symbols-outlined">school</span>
           Gestionar Planes de Estudio
         </GoogleButton>
 
-        <GoogleButton v-if="auth.isAdmin" size="sm" color="#1a73e8" @click="showConceptosManager = true">
+        <GoogleButton v-if="auth.can('action.catalogos.manage')" size="sm" color="#1a73e8" @click="showConceptosManager = true">
           <span class="material-symbols-outlined">receipt_long</span>
           Gestionar Conceptos
         </GoogleButton>
@@ -42,23 +42,23 @@
       <!-- Zona derecha del header: filtros y acciones -->
       <template #header-extra>
         <div class="table-actions">
-          <!-- Botón "Nuevo alumno" PROMINENTE -->
-          <GoogleButton size="sm" variant="filled" color="#1a73e8" @click="openCreateAlumno">
-            <span class="material-symbols-outlined">person_add</span>
-            Nuevo alumno
-          </GoogleButton>
-
           <!-- Buscador -->
           <GoogleInput v-model="search" class="table-search-input" size="sm"
             placeholder="Buscar por matrícula, nombre o plan..." />
 
           <!-- Filtro por plan de estudio - Deshabilitado para Coordinadores -->
           <GoogleSelect v-model="filterCarrera" class="table-filter-select" :options="carreraOptions"
-            placeholder="Todos los planes" size="sm" :disabled="auth.isCoordinator" />
+            placeholder="Todos los planes" size="sm" :disabled="!auth.can('filters.carrera.change')" />
 
           <!-- Filtro por ciclo -->
           <GoogleSelect v-model="filterCiclo" class="table-filter-select" :options="cicloOptions"
             placeholder="Todos los ciclos" size="sm" />
+
+          <!-- Filtro por semestre -->
+          <GoogleSelect v-model="filterSemestre" class="table-filter-select" :options="semestreOptions"
+            placeholder="Todos los semestres" size="sm" />
+
+          <span class="chip chip-soft">Plan: {{ selectedCarreraLabel }}</span>
 
           <!-- Filtro por estado de pago -->
           <GoogleSelect v-model="filterPago" class="table-filter-select" :options="[
@@ -84,7 +84,6 @@
             <tr>
               <th>Matrícula</th>
               <th>Nombre Completo</th>
-              <th>Plan de Estudio</th>
               <th>Semestre</th>
               <th>Ciclo Escolar</th>
               <th>Cuentas Pendientes</th>
@@ -98,8 +97,12 @@
               <td class="cell-matricula">
                 <strong>{{ row.matricula }}</strong>
               </td>
-              <td>{{ row.nombre_completo }}</td>
-              <td>{{ row.carrera }}</td>
+              <td>
+                <div class="cell-name">
+                  <span>{{ row.nombre_completo }}</span>
+                  <small class="cell-subtle-plan">{{ row.carrera }}</small>
+                </div>
+              </td>
               <td class="cell-centered">
                 <span class="chip chip-info" :title="'Plan de ' + row.duracionCarrera + ' semestres'">{{
                   row.semestre_actual
@@ -133,17 +136,17 @@
                 </span>
               </td>
               <td class="cell-actions">
-                <button class="icon-button" title="Ver detalles" @click="openDetails(row)">
+                <button class="icon-button action-view" title="Ver detalles" @click="openDetails(row)">
                   <span class="material-symbols-outlined">visibility</span>
                 </button>
-                <button class="icon-button" title="Editar alumno" @click="editAlumno(row.alumno)">
+                <button class="icon-button action-edit" title="Editar alumno" @click="editAlumno(row.alumno)">
                   <span class="material-symbols-outlined">edit</span>
                 </button>
-                <button v-if="row.totalPendiente > 0" class="icon-button" title="Nueva cuenta"
+                <button v-if="row.totalPendiente > 0" class="icon-button action-payments" title="Nueva cuenta"
                   @click="openNewCuenta(row.matricula)">
                   <span class="material-symbols-outlined">payments</span>
                 </button>
-                <button class="icon-button icon-danger" title="Eliminar alumno" @click="deleteAlumno(row.matricula)">
+                <button class="icon-button action-delete" title="Eliminar alumno" @click="deleteAlumno(row.matricula)">
                   <span class="material-symbols-outlined">delete</span>
                 </button>
               </td>
@@ -235,10 +238,10 @@
                   </td>
                   <td><span class="text-muted">{{ cuenta.fecha_pago ?? '-' }}</span></td>
                   <td class="cell-actions-small">
-                    <button class="icon-button-small" title="Editar" @click="editCuenta(cuenta)">
+                    <button class="icon-button-small action-edit-small" title="Editar" @click="editCuenta(cuenta)">
                       <span class="material-symbols-outlined" style="font-size: 1.1rem">edit</span>
                     </button>
-                    <button class="icon-button-small icon-danger" title="Eliminar"
+                    <button class="icon-button-small action-delete-small" title="Eliminar"
                       @click="deleteCuenta(cuenta.id_cuenta)">
                       <span class="material-symbols-outlined" style="font-size: 1.1rem">delete</span>
                     </button>
@@ -320,6 +323,7 @@
                 <tr>
                   <th>Fecha</th>
                   <th>Autor</th>
+                  <th>Taller</th>
                   <th>Detalle</th>
                   <th class="cell-actions-small">Acciones</th>
                 </tr>
@@ -328,11 +332,12 @@
                 <tr v-for="obs in selectedRowObservaciones" :key="obs.id_observacion">
                   <td class="text-muted text-small">{{ formatDate(obs.fecha) }}</td>
                   <td>{{ getUsuarioNombre(obs.id_autor) }}</td>
+                  <td>{{ formatObservacionTaller(obs.taller) }}</td>
                   <td>{{ obs.detalle }}</td>
                   <td class="cell-actions-small">
-                    <button class="icon-button-small" title="Editar" @click="editObservacion(obs)"><span
+                    <button class="icon-button-small action-edit-small" title="Editar" @click="editObservacion(obs)"><span
                         class="material-symbols-outlined" style="font-size: 1.1rem">edit</span></button>
-                    <button class="icon-button-small icon-danger" title="Eliminar"
+                    <button class="icon-button-small action-delete-small" title="Eliminar"
                       @click="deleteObservacion(obs.id_observacion)"><span class="material-symbols-outlined"
                         style="font-size: 1.1rem">delete</span></button>
                   </td>
@@ -348,14 +353,20 @@
     </GoogleModal>
 
     <!-- Modal: Crear/Editar alumno -->
-    <GoogleModal v-model="showAlumnoModal" :icon="isEditingAlumno ? 'edit' : 'person_add'"
-      :title="isEditingAlumno ? 'Editar alumno' : 'Nuevo alumno'"
-      subtitle="Completa los campos obligatorios para guardar los cambios." maxWidth="760px" density="comfortable"
+    <GoogleModal v-model="showAlumnoModal" :icon="isEditingAlumno ? 'edit' : 'school'"
+      :title="isEditingAlumno ? 'Editar alumno' : 'Alta de alumno'"
+      :subtitle="isEditingAlumno
+        ? 'Actualiza datos generales y adeudos iniciales.'
+        : 'Captura datos del alumno y, si aplica, agrega una o varias cuentas por cobrar.'"
+      maxWidth="920px" density="comfortable"
       :showFooter="false" :showAddAnother="!isEditingAlumno" v-model:addAnother="addAnotherAlumno">
-      <AlumnosForm v-if="alumnoForm" :form="alumnoForm as any" :carreras="carreras" :conceptos="conceptos"
-        :ciclos="ciclosEscolares" :metodos-pago="metodos" :is-editing="isEditingAlumno" :loading="loadingSave"
-        @submit="handleAlumnoSubmit" @cancel-edit="handleAlumnoCancel" @open-bulk-modal="showBulkModal = true"
-        @download-template="downloadTemplate" />
+      <div class="alumno-modal-shell">
+        <AlumnosForm v-if="alumnoForm" :form="alumnoForm as any" :carreras="carreras" :conceptos="conceptos"
+          :ciclos="ciclosEscolares" :metodos-pago="metodos" :enable-initial-debt="true"
+          :is-editing="isEditingAlumno" :loading="loadingSave"
+          @submit="handleAlumnoSubmit" @cancel-edit="handleAlumnoCancel" @open-bulk-modal="showBulkModal = true"
+          @download-template="downloadTemplate" />
+      </div>
     </GoogleModal>
 
     <!-- Modal: Carga masiva -->
@@ -373,8 +384,11 @@
       <form v-if="cuentaForm" @submit.prevent="handleCuentaSubmit" class="cuenta-form">
         <div class="form-grid">
           <GoogleInput v-model="cuentaForm.matricula" label="Matrícula" disabled />
-          <GoogleSelect v-model="cuentaForm.concepto" :options="conceptoOptions" label="Concepto *"
+          <GoogleSelect v-model="cuentaForm.concepto" :options="availableConceptoOptionsForCuenta" label="Concepto *"
             placeholder="Selecciona concepto..." required @update:modelValue="onConceptoDashboardChange" />
+          <p v-if="!availableConceptoOptionsForCuenta.length" class="form-inline-hint span-2">
+            Este alumno ya tiene cuentas para todos los conceptos en el ciclo seleccionado.
+          </p>
           <GoogleSelect v-model="cuentaForm.id_ciclo" :options="cicloOptions" label="Ciclo Escolar *"
             placeholder="Selecciona ciclo..." required />
           <GoogleInput v-model.number="cuentaForm.monto" label="Monto *" type="number" step="0.01" min="0"
@@ -406,6 +420,8 @@
           <GoogleInput v-model="observacionForm.autorTexto" label="Autor (opcional)"
             placeholder="Tu nombre de usuario o deja en blanco"
             :hint="`Usuarios disponibles: ${usuarioOptions.map(u => u.label).join(', ')}`" />
+          <GoogleSelect v-model="observacionForm.taller" :options="observacionTallerOptions"
+            label="Taller / canalización *" placeholder="Selecciona el tipo" required />
           <div class="field">
             <label for="obs-detalle">Detalle *</label>
             <textarea v-model="observacionForm.detalle" id="obs-detalle" class="form-textarea" rows="4"
@@ -495,8 +511,9 @@ const auth = useAuthStore();
 
 // Filtros
 const search = ref('');
-const filterCarrera = ref<number | string>(auth.userCareerId ?? '');
+const filterCarrera = ref<number | string>('');
 const filterCiclo = ref<number | string>('');
+const filterSemestre = ref<number | string>('');
 const filterPago = ref('');
 
 // Modales
@@ -526,7 +543,22 @@ const addAnotherObservacion = ref(false);
 // Carga masiva
 const showBulkModal = ref(false);
 const bulkFileName = ref('');
-const bulkRows = ref<any[]>([]);
+type BulkAdeudoInput = {
+  concepto: string;
+  monto?: number | null;
+  id_ciclo?: number | null;
+  pagado?: boolean;
+  fecha_pago?: string | null;
+  id_metodo?: number | null;
+};
+
+type BulkAlumnoRow = AlumnoCreate & {
+  activo: boolean;
+  adeudos: BulkAdeudoInput[];
+  conceptos_display?: string;
+};
+
+const bulkRows = ref<BulkAlumnoRow[]>([]);
 const bulkErrors = ref<string[]>([]);
 const bulkParsing = ref(false);
 const bulkLoading = ref(false);
@@ -534,12 +566,39 @@ const bulkProgress = ref({ processed: 0, total: 0 });
 
 
 // ============= COMPUTED =============
-const carreraOptions = computed(() =>
-  carreras.value.map((c) => ({
+const carreraOptions = computed(() => {
+  const options = carreras.value.map((c) => ({
     value: c.id_carrera,
     label: c.nombre,
-  }))
-);
+  }));
+
+  const existingIds = new Set(options.map((opt) => Number(opt.value)));
+  const fallbackIds = new Set(
+    alumnos.value
+      .map((alumno) => Number(alumno.id_carrera))
+      .filter((id) => !Number.isNaN(id)),
+  );
+
+  fallbackIds.forEach((id) => {
+    if (!existingIds.has(id)) {
+      options.push({ value: id, label: `Plan #${id}` });
+    }
+  });
+
+  return options;
+});
+
+const selectedCarreraLabel = computed(() => {
+  if (filterCarrera.value === '' || filterCarrera.value === null) {
+    return 'Todos los planes';
+  }
+
+  const selected = carreraOptions.value.find(
+    (option) => Number(option.value) === Number(filterCarrera.value),
+  );
+
+  return selected?.label ?? `Plan #${filterCarrera.value}`;
+});
 
 const cicloOptions = computed(() =>
   ciclosEscolares.value.map((c) => ({
@@ -547,6 +606,24 @@ const cicloOptions = computed(() =>
     label: c.nombre,
   }))
 );
+
+const semestreOptions = computed(() => {
+  const semestres = Array.from(
+    new Set(
+      alumnos.value
+        .map((alumno) => Number(alumno.semestre_actual))
+        .filter((semestre) => Number.isFinite(semestre) && semestre > 0),
+    ),
+  ).sort((a, b) => a - b);
+
+  return [
+    { value: '', label: 'Todos los semestres' },
+    ...semestres.map((semestre) => ({
+      value: semestre,
+      label: `Semestre ${semestre}`,
+    })),
+  ];
+});
 
 const metodoOptions = computed(() =>
   metodos.value.map((m) => ({
@@ -565,6 +642,38 @@ const conceptoOptions = computed(() =>
 const defaultConcepto = computed(() => {
   const first = conceptoOptions.value[0]?.value;
   return first != null ? String(first) : '';
+});
+
+function getTakenConceptosForCuenta(matricula: string, idCiclo: number, excludeId?: number): Set<string> {
+  const taken = new Set<string>();
+
+  for (const cuenta of cuentas.value) {
+    if (excludeId != null && cuenta.id_cuenta === excludeId) continue;
+    if (String(cuenta.matricula).trim() !== matricula) continue;
+    if (Number(cuenta.id_ciclo) !== Number(idCiclo)) continue;
+
+    taken.add(String(cuenta.concepto).trim().toLowerCase());
+  }
+
+  return taken;
+}
+
+const availableConceptoOptionsForCuenta = computed(() => {
+  if (!cuentaForm.value) return conceptoOptions.value;
+
+  const matricula = String(cuentaForm.value.matricula ?? '').trim();
+  const idCiclo = Number(cuentaForm.value.id_ciclo ?? 0);
+  const excludeId = isEditingCuenta.value ? cuentaForm.value.id_cuenta : undefined;
+
+  if (!matricula || !idCiclo) return conceptoOptions.value;
+
+  const taken = getTakenConceptosForCuenta(matricula, idCiclo, excludeId);
+  const currentConcept = String(cuentaForm.value.concepto ?? '').trim().toLowerCase();
+
+  return conceptoOptions.value.filter((option) => {
+    const value = String(option.value).trim().toLowerCase();
+    return value === currentConcept || !taken.has(value);
+  });
 });
 
 const cuentasByMatricula = computed(() => {
@@ -588,6 +697,39 @@ const usuarioOptions = computed(() =>
     label: u.username,
   }))
 );
+
+const observacionTallerOptions = [
+  { value: 'canalización académica', label: 'Canalización académica' },
+  { value: 'canalización psicológica', label: 'Canalización psicológica' },
+  { value: 'baja', label: 'Baja' },
+  { value: 'otro', label: 'Otro' },
+];
+
+function normalizeObservacionTaller(value: unknown): string {
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (normalized === 'canalizacion academica') return 'canalización académica';
+  if (normalized === 'canalizacion psicologica') return 'canalización psicológica';
+  if (normalized === 'baja') return 'baja';
+  if (normalized === 'otro') return 'otro';
+  return 'otro';
+}
+
+function formatObservacionTaller(value: unknown): string {
+  const normalized = normalizeObservacionTaller(value);
+  const found = observacionTallerOptions.find((option) => option.value === normalized);
+  return found?.label ?? 'Otro';
+}
+
+function toComparableId(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
 
 // Data principal: combina alumnos, ciclos y cuentas
 const dashboardData = computed(() => {
@@ -631,20 +773,25 @@ const filteredData = computed(() => {
         .includes(search.value.toLowerCase());
 
     const matchCarrera =
-      !filterCarrera.value || row.alumno.id_carrera === filterCarrera.value;
+      !filterCarrera.value ||
+      toComparableId(row.alumno.id_carrera) === toComparableId(filterCarrera.value);
 
     const matchCiclo =
       !filterCiclo.value ||
       ciclosEscolares.value
-        .find((c) => c.id_ciclo === filterCiclo.value)
+        .find((c) => toComparableId(c.id_ciclo) === toComparableId(filterCiclo.value))
         ?.nombre === row.cicloActual;
+
+    const matchSemestre =
+      !filterSemestre.value ||
+      Number(row.semestre_actual) === Number(filterSemestre.value);
 
     const matchPago =
       !filterPago.value ||
       (filterPago.value === 'pendiente' && row.totalPendiente > 0) ||
       (filterPago.value === 'pagado' && row.totalPendiente === 0);
 
-    return matchSearch && matchCarrera && matchCiclo && matchPago;
+    return matchSearch && matchCarrera && matchCiclo && matchSemestre && matchPago;
   });
 });
 
@@ -728,25 +875,73 @@ async function loadData() {
     // 2. Verificar y crear el ciclo si es necesario
     await checkAndCreateCiclo();
 
-    // 3. Cargar el resto de los datos en paralelo
-    const [alumnosData, cuentasData, carrerasData, metodosData, observacionesData, usuariosData, conceptosData] =
-      await Promise.all([
-        getAlumnos(),
-        getCuentas(),
-        getCarreras(),
-        getMetodosPago(),
-        getObservaciones(),
-        getUsuarios(),
-        getConceptos()
-      ]);
+    // 3. Cargar el resto de los datos en paralelo, sin romper toda la vista
+    // si un endpoint viene con permisos restringidos.
+    const [
+      alumnosResult,
+      cuentasResult,
+      carrerasResult,
+      metodosResult,
+      observacionesResult,
+      usuariosResult,
+      conceptosResult,
+    ] = await Promise.allSettled([
+      getAlumnos(),
+      getCuentas(),
+      getCarreras(),
+      getMetodosPago(),
+      getObservaciones(),
+      getUsuarios(),
+      getConceptos(),
+    ]);
 
-    alumnos.value = alumnosData;
-    cuentas.value = cuentasData;
-    carreras.value = carrerasData;
-    conceptos.value = conceptosData;
-    metodos.value = metodosData;
-    observaciones.value = observacionesData;
-    usuarios.value = usuariosData;
+    const failedLoads: string[] = [];
+
+    if (alumnosResult.status === 'fulfilled') {
+      alumnos.value = alumnosResult.value;
+    } else {
+      failedLoads.push('alumnos');
+    }
+
+    if (cuentasResult.status === 'fulfilled') {
+      cuentas.value = cuentasResult.value;
+    } else {
+      failedLoads.push('cuentas');
+    }
+
+    if (carrerasResult.status === 'fulfilled') {
+      carreras.value = carrerasResult.value;
+    } else {
+      failedLoads.push('planes de estudio');
+    }
+
+    if (metodosResult.status === 'fulfilled') {
+      metodos.value = metodosResult.value;
+    } else {
+      failedLoads.push('metodos de pago');
+    }
+
+    if (observacionesResult.status === 'fulfilled') {
+      observaciones.value = observacionesResult.value;
+    } else {
+      failedLoads.push('observaciones');
+    }
+
+    if (usuariosResult.status === 'fulfilled') {
+      usuarios.value = usuariosResult.value;
+    } else {
+      failedLoads.push('usuarios');
+    }
+
+    if (conceptosResult.status === 'fulfilled') {
+      conceptos.value = conceptosResult.value;
+    } else {
+      failedLoads.push('conceptos');
+    }
+
+    if (failedLoads.length > 0) {
+      error.value = `No se pudieron cargar algunos datos: ${failedLoads.join(', ')}`;
+    }
 
   } catch (err) {
     error.value = 'Error al cargar los datos';
@@ -769,7 +964,16 @@ function getCicloNombre(id_ciclo: number): string {
 
 function getUsuarioNombre(id_autor: number | null): string {
   if (!id_autor) return 'Sistema';
-  return usuarios.value.find((u) => u.id_usuario === id_autor)?.username || '-';
+
+  const found = usuarios.value.find((u) => u.id_usuario === id_autor)?.username;
+  if (found) return found;
+
+  const currentUserId = Number(auth.user?.id_usuario ?? 0);
+  if (!Number.isNaN(currentUserId) && currentUserId === Number(id_autor)) {
+    return String(auth.user?.username ?? 'Sistema');
+  }
+
+  return '-';
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -785,7 +989,83 @@ function formatDate(iso: string | null | undefined): string {
   });
 }
 
+function getCurrentUserId(): number | null {
+  const parsed = Number(auth.user?.id_usuario ?? 0);
+  return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
+}
+
+function getCurrentUsername(): string {
+  return String(auth.user?.username ?? '').trim();
+}
+
+function isConceptConstraintError(err: unknown): boolean {
+  const data = (err as any)?.response?.data;
+  const code = String(data?.code ?? '');
+  const message = String(data?.message ?? '').toLowerCase();
+  return code === '23514' && message.includes('cuentas_por_cobrar_concepto_check');
+}
+
+function isDuplicateCuentaError(err: unknown): boolean {
+  const data = (err as any)?.response?.data;
+  const code = String(data?.code ?? '');
+  const message = String(data?.message ?? '').toLowerCase();
+
+  return (
+    code === '23505' &&
+    (message.includes('idx_cxc_matricula_concepto_ciclo') ||
+      message.includes('llave duplicada'))
+  );
+}
+
+function getApiErrorMessage(err: unknown): string {
+  const data = (err as any)?.response?.data;
+  if (data?.message) return String(data.message);
+  if (err instanceof Error) return err.message;
+  return 'Error inesperado';
+}
+
+function isSameCuentaKey(cuenta: Cuenta, payload: CuentaPayload): boolean {
+  return (
+    String(cuenta.matricula).trim() === String(payload.matricula).trim() &&
+    String(cuenta.concepto).trim().toLowerCase() === String(payload.concepto).trim().toLowerCase() &&
+    Number(cuenta.id_ciclo) === Number(payload.id_ciclo)
+  );
+}
+
+function findDuplicateCuenta(payload: CuentaPayload, excludeId?: number): Cuenta | undefined {
+  return cuentas.value.find((cuenta) => {
+    if (excludeId != null && cuenta.id_cuenta === excludeId) return false;
+    return isSameCuentaKey(cuenta, payload);
+  });
+}
+
 // ============= ALUMNO CRUD =============
+function getDefaultCicloId(): number | null {
+  const ciclo = ciclosEscolares.value.find((c) => c.es_actual) ?? ciclosEscolares.value[0];
+  if (!ciclo) return null;
+  const id = Number(ciclo.id_ciclo);
+  return Number.isNaN(id) ? null : id;
+}
+
+function getConceptoFromValue(value: unknown): Concepto | undefined {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return undefined;
+  return conceptos.value.find((c) => c.clave === normalized || c.descripcion === normalized);
+}
+
+function buildDefaultAdeudoForm() {
+  const concepto = conceptos.value[0];
+
+  return {
+    concepto: concepto?.clave ?? '',
+    monto: Number(concepto?.monto_default ?? 0),
+    pagado: false,
+    id_ciclo: getDefaultCicloId(),
+    fecha_pago: null,
+    id_metodo: null,
+  };
+}
+
 function openCreateAlumno() {
   isEditingAlumno.value = false;
   alumnoForm.value = {
@@ -797,8 +1077,8 @@ function openCreateAlumno() {
     semestre_actual: 1,
     activo: true,
     // Inicialización para adeudo
-    con_adeudo: false,
-    adeudos: []
+    con_adeudo: true,
+    adeudos: [buildDefaultAdeudoForm()]
   };
   showAlumnoModal.value = true;
 }
@@ -827,17 +1107,49 @@ async function handleAlumnoSubmit() {
     } else {
       const { con_adeudo, adeudos, ...createPayload } = alumnoForm.value;
       // 1. Crear el alumno
-      await createAlumno(createPayload as AlumnoCreate);
+      const createdAlumno = await createAlumno(createPayload as AlumnoCreate);
+      const matriculaTarget = String(createdAlumno.matricula || alumnoForm.value.matricula || '').trim();
 
-      // 2. Si se marcó adeudo inicial, crearlos
-      if (alumnoForm.value.con_adeudo && alumnoForm.value.adeudos && alumnoForm.value.adeudos.length > 0) {
-        for (const adeudo of alumnoForm.value.adeudos) {
-          if (!adeudo.concepto) continue;
+      // 2. Crear adeudos iniciales (si se capturaron uno o más conceptos)
+      const adeudosList = Array.isArray(adeudos)
+        ? adeudos.filter((adeudo) => !!adeudo?.concepto)
+        : [];
+
+      if (adeudosList.length > 0) {
+        const cicloActualId = getDefaultCicloId();
+        const seenKeys = new Set<string>();
+
+        if (!matriculaTarget) {
+          throw new Error('No se obtuvo matrícula válida para vincular cuentas por cobrar.');
+        }
+
+        for (const adeudo of adeudosList) {
+          const conceptoInfo = getConceptoFromValue(adeudo.concepto);
+          if (!conceptoInfo) {
+            throw new Error(`Concepto inválido: ${String(adeudo.concepto)}`);
+          }
+
+          const idCiclo = Number(adeudo.id_ciclo ?? cicloActualId);
+          if (!idCiclo || Number.isNaN(idCiclo)) {
+            throw new Error(`No se pudo determinar el ciclo para el concepto ${conceptoInfo.clave}`);
+          }
+
+          const uniqueKey = `${matriculaTarget}|${conceptoInfo.clave}|${idCiclo}`;
+          if (seenKeys.has(uniqueKey)) {
+            throw new Error(`Concepto duplicado en adeudos iniciales: ${conceptoInfo.clave} (${getCicloNombre(idCiclo)}).`);
+          }
+          seenKeys.add(uniqueKey);
+
+          const montoParsed = Number(adeudo.monto);
+          const montoFinal = Number.isNaN(montoParsed)
+            ? Number(conceptoInfo.monto_default ?? 0)
+            : montoParsed;
+
           const cuentaPayload: CuentaPayload = {
-            matricula: alumnoForm.value.matricula,
-            concepto: adeudo.concepto,
-            id_ciclo: adeudo.id_ciclo || 1,
-            monto: adeudo.monto || 0,
+            matricula: matriculaTarget,
+            concepto: conceptoInfo.clave,
+            id_ciclo: idCiclo,
+            monto: montoFinal,
             pagado: adeudo.pagado || false,
             fecha_pago: adeudo.pagado ? adeudo.fecha_pago : null,
             id_metodo: adeudo.pagado ? adeudo.id_metodo : null,
@@ -856,9 +1168,26 @@ async function handleAlumnoSubmit() {
 
     await loadData();
   } catch (err) {
-    error.value = isEditingAlumno.value
+    if (isConceptConstraintError(err)) {
+      error.value = 'El backend solo acepta conceptos permitidos por su restriccion actual (cuentas_por_cobrar_concepto_check). Actualiza esa regla en backend/BD o usa un concepto valido legacy.';
+      console.error(err);
+      return;
+    }
+
+    if (isDuplicateCuentaError(err)) {
+      error.value = 'Ya existe una cuenta con la misma matricula, concepto y ciclo. Evita repetir conceptos iguales dentro del mismo ciclo.';
+      console.error(err);
+      return;
+    }
+
+    const fallbackError = isEditingAlumno.value
       ? 'Error al actualizar alumno'
-      : 'Error al crear alumno con adeudo inicial';
+      : 'Error al crear alumno con cuentas por cobrar iniciales';
+
+    const apiMessage = getApiErrorMessage(err);
+    error.value = apiMessage
+      ? `${fallbackError}: ${apiMessage}`
+      : fallbackError;
     console.error(err);
   } finally {
     loadingSave.value = false;
@@ -882,29 +1211,61 @@ async function deleteAlumno(matricula: string) {
 }
 
 // ============= CUENTA CRUD =============
+function syncCuentaConceptoSelection() {
+  if (!cuentaForm.value) return;
+
+  const current = String(cuentaForm.value.concepto ?? '').trim();
+  const exists = availableConceptoOptionsForCuenta.value.some(
+    (option) => String(option.value).trim() === current,
+  );
+
+  if (exists) return;
+
+  const fallback = availableConceptoOptionsForCuenta.value[0];
+  if (!fallback) {
+    cuentaForm.value.concepto = '';
+    cuentaForm.value.monto = 0;
+    return;
+  }
+
+  cuentaForm.value.concepto = String(fallback.value);
+  onConceptoDashboardChange(fallback.value as string);
+}
+
 function onConceptoDashboardChange(val: string | number | null) {
   if (val === null || !cuentaForm.value) return;
   const concepto = conceptos.value.find((c) => c.clave === String(val));
-  if (concepto && concepto.monto_default) {
-    cuentaForm.value.monto = Number(concepto.monto_default);
+  if (concepto) {
+    cuentaForm.value.monto = Number(concepto.monto_default ?? 0);
   }
 }
 
 function openNewCuenta(matricula: string) {
   isEditingCuenta.value = false;
 
-  const conceptoDefault = defaultConcepto.value;
+  const defaultCicloId = getDefaultCicloId();
+  const taken = defaultCicloId
+    ? getTakenConceptosForCuenta(String(matricula).trim(), defaultCicloId)
+    : new Set<string>();
+
+  const conceptoDisponible = conceptos.value.find(
+    (c) => !taken.has(String(c.clave).trim().toLowerCase()),
+  );
+
+  const conceptoDefault = conceptoDisponible?.clave ?? defaultConcepto.value;
   const concepto = conceptos.value.find((c) => c.clave === conceptoDefault);
 
   cuentaForm.value = {
     matricula,
     concepto: conceptoDefault,
-    id_ciclo: ciclosEscolares.value.find((c) => c.es_actual)?.id_ciclo,
+    id_ciclo: defaultCicloId ?? undefined,
     monto: concepto?.monto_default ?? 0,
     pagado: false,
     fecha_pago: null,
     id_metodo: null,
   };
+
+  syncCuentaConceptoSelection();
   showCuentaModal.value = true;
 }
 
@@ -929,6 +1290,7 @@ function editCuenta(cuenta: Cuenta) {
     fecha_pago: cuenta.fecha_pago,
     id_metodo: cuenta.id_metodo,
   };
+  syncCuentaConceptoSelection();
   showCuentaModal.value = true;
 }
 
@@ -951,6 +1313,16 @@ async function handleCuentaSubmit() {
       return;
     }
 
+    const duplicate = findDuplicateCuenta(
+      payload,
+      isEditingCuenta.value ? cuentaForm.value.id_cuenta : undefined,
+    );
+
+    if (duplicate) {
+      error.value = `Ya existe la cuenta #${duplicate.id_cuenta} para ${payload.matricula}, ${payload.concepto} y ciclo ${getCicloNombre(payload.id_ciclo)}.`;
+      return;
+    }
+
     if (isEditingCuenta.value && cuentaForm.value.id_cuenta) {
       await updateCuenta(cuentaForm.value.id_cuenta, payload);
     } else {
@@ -966,9 +1338,21 @@ async function handleCuentaSubmit() {
 
     await loadData();
   } catch (err) {
+    if (isConceptConstraintError(err)) {
+      error.value = 'El backend rechazo el concepto por la restriccion cuentas_por_cobrar_concepto_check. Revisa conceptos permitidos en BD.';
+      console.error(err);
+      return;
+    }
+
+    if (isDuplicateCuentaError(err)) {
+      error.value = 'Cuenta duplicada: ya existe una cuenta con la misma matricula, concepto y ciclo.';
+      console.error(err);
+      return;
+    }
+
     error.value = isEditingCuenta.value
-      ? 'Error al actualizar cuenta'
-      : 'Error al crear cuenta';
+      ? `Error al actualizar cuenta: ${getApiErrorMessage(err)}`
+      : `Error al crear cuenta: ${getApiErrorMessage(err)}`;
     console.error(err);
   } finally {
     loadingSave.value = false;
@@ -994,10 +1378,13 @@ async function deleteCuenta(id_cuenta: number) {
 // ============= OBSERVACION CRUD =============
 function openNewObservacion(matricula: string) {
   isEditingObservacion.value = false;
+  const username = getCurrentUsername();
+
   observacionForm.value = {
     matricula: matricula,
     detalle: '',
-    autorTexto: '', // Campo para texto libre o username
+    taller: 'otro',
+    autorTexto: username, // login actual por defecto
   };
   showObservacionModal.value = true;
 }
@@ -1008,6 +1395,7 @@ function editObservacion(obs: Observacion) {
     id_observacion: obs.id_observacion,
     matricula: obs.matricula,
     detalle: obs.detalle,
+    taller: normalizeObservacionTaller(obs.taller),
     autorTexto: getUsuarioNombre(obs.id_autor ?? null),
   };
   showObservacionModal.value = true;
@@ -1020,15 +1408,25 @@ async function handleObservacionSubmit() {
   try {
     // Intentar matchear el texto con un usuario existente
     const autorTexto = observacionForm.value.autorTexto?.trim() ?? '';
+    const currentUserId = getCurrentUserId();
+    const currentUsername = getCurrentUsername().toLowerCase();
     let autorId: number | null = null;
+
     if (autorTexto) {
       const foundUser = usuarios.value.find(u => u.username.toLowerCase() === autorTexto.toLowerCase());
-      autorId = foundUser ? foundUser.id_usuario : null;
+      if (foundUser) {
+        autorId = foundUser.id_usuario;
+      } else if (currentUserId && autorTexto.toLowerCase() === currentUsername) {
+        autorId = currentUserId;
+      }
+    } else {
+      autorId = currentUserId;
     }
 
     const payload: ObservacionPayload = {
       matricula: observacionForm.value.matricula!,
       detalle: observacionForm.value.detalle!,
+      taller: normalizeObservacionTaller(observacionForm.value.taller),
       id_autor: autorId,
     };
 
@@ -1071,9 +1469,99 @@ async function deleteObservacion(id_observacion: number) {
 }
 
 // ============= EXCEL LOGIC =============
+function parseBooleanFlag(value: unknown, defaultValue: boolean): boolean {
+  if (value === null || value === undefined || value === '') return defaultValue;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return defaultValue;
+
+  return ['1', 'true', 'si', 'sí', 'yes', 'y', 'x'].includes(normalized);
+}
+
+function parseOptionalNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function splitConceptTokens(raw: unknown): string[] {
+  if (raw === null || raw === undefined || raw === '') return [];
+
+  return String(raw)
+    .split(/[|,;]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function parseAdeudosFromRow(row: Record<string, unknown>): BulkAdeudoInput[] {
+  const inlineConcepts = splitConceptTokens(
+    row.conceptos ?? row.concepto ?? row.adeudos ?? row.conceptos_clave,
+  );
+
+  const indexedConcepts = Object.entries(row)
+    .filter(([key]) => /^concepto_\d+$/i.test(key))
+    .sort(([a], [b]) => a.localeCompare(b, 'es', { numeric: true }))
+    .flatMap(([, value]) => splitConceptTokens(value));
+
+  const conceptos = Array.from(new Set([...inlineConcepts, ...indexedConcepts]));
+
+  const commonCiclo = parseOptionalNumber(row.id_ciclo_adeudo ?? row.id_ciclo_cuenta ?? row.id_ciclo);
+  const commonMonto = parseOptionalNumber(row.monto_adeudo ?? row.monto_cuenta);
+  const commonMetodo = parseOptionalNumber(row.id_metodo_adeudo ?? row.id_metodo_cuenta);
+  const commonPagado = parseBooleanFlag(row.pagado_adeudo ?? row.pagado_cuenta, false);
+
+  const rawFecha = row.fecha_pago_adeudo ?? row.fecha_pago_cuenta;
+  const commonFechaPago =
+    rawFecha === null || rawFecha === undefined || rawFecha === '' ? null : String(rawFecha).trim();
+
+  return conceptos.map((concepto) => ({
+    concepto,
+    id_ciclo: commonCiclo,
+    monto: commonMonto,
+    pagado: commonPagado,
+    fecha_pago: commonFechaPago,
+    id_metodo: commonMetodo,
+  }));
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function findConceptoByToken(token: string): Concepto | undefined {
+  const normalizedToken = normalizeText(token);
+
+  return conceptos.value.find((concepto) => {
+    return (
+      normalizeText(concepto.clave) === normalizedToken ||
+      normalizeText(concepto.descripcion) === normalizedToken
+    );
+  });
+}
+
 function downloadTemplate() {
-  const headers = ['matricula', 'nombre_completo', 'email_institucional', 'telefono_contacto', 'id_carrera', 'semestre_actual', 'activo'];
-  const sample = [['190123', 'JUAN PÉREZ GARCÍA', 'juan.perez@uadec.edu.mx', '8711112233', 1, 1, 1]];
+  const headers = [
+    'matricula',
+    'nombre_completo',
+    'email_institucional',
+    'telefono_contacto',
+    'id_carrera',
+    'semestre_actual',
+    'activo',
+    'conceptos',
+    'id_ciclo_adeudo',
+    'pagado_adeudo',
+  ];
+  const cicloActual = ciclosEscolares.value.find((c) => c.es_actual)?.id_ciclo ?? '';
+  const sample = [
+    ['190123', 'JUAN PÉREZ GARCÍA', 'juan.perez@uadec.edu.mx', '8711112233', 1, 1, 1, 'INSCRIPCION|CREDENCIAL', cicloActual, 0],
+  ];
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Alumnos');
@@ -1097,18 +1585,26 @@ function onBulkFileChange(event: any) {
       if (!firstSheetName) throw new Error('El archivo Excel no tiene hojas.');
       const sheet = workbook.Sheets[firstSheetName];
       if (!sheet) throw new Error('No se pudo encontrar la hoja especificada.');
-      const json = XLSX.utils.sheet_to_json(sheet) as any[];
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
 
-      // Mapeo simple de campos
-      bulkRows.value = json.map(row => ({
-        matricula: String(row.matricula || ''),
-        nombre_completo: row.nombre_completo || '',
-        email_institucional: row.email_institucional || '',
-        telefono_contacto: String(row.telefono_contacto || ''),
-        id_carrera: Number(row.id_carrera || 1),
-        semestre_actual: Number(row.semestre_actual || 1),
-        activo: row.activo != null ? Boolean(row.activo) : true
-      }));
+      // Mapeo de alumno + adeudos iniciales (opcional)
+      bulkRows.value = json.map(row => {
+        const adeudos = parseAdeudosFromRow(row);
+
+        return {
+          matricula: String(row.matricula || ''),
+          nombre_completo: String(row.nombre_completo || ''),
+          email_institucional: String(row.email_institucional || ''),
+          telefono_contacto: String(row.telefono_contacto || ''),
+          id_carrera: Number(row.id_carrera || 1),
+          semestre_actual: Number(row.semestre_actual || 1),
+          activo: parseBooleanFlag(row.activo, true),
+          adeudos,
+          conceptos_display: adeudos
+            .map((adeudo) => adeudo.concepto)
+            .join(' | '),
+        };
+      });
     } catch (err) {
       bulkErrors.value.push('Error al leer el archivo Excel.');
       console.error(err);
@@ -1124,9 +1620,53 @@ async function handleBulkUpload() {
   bulkLoading.value = true;
   bulkProgress.value = { processed: 0, total: bulkRows.value.length };
 
+  const cicloActualId = ciclosEscolares.value.find((c) => c.es_actual)?.id_ciclo ?? ciclosEscolares.value[0]?.id_ciclo;
+
   for (const row of bulkRows.value) {
     try {
-      await createAlumno(row);
+      const alumnoPayload: AlumnoCreate = {
+        matricula: row.matricula,
+        nombre_completo: row.nombre_completo,
+        email_institucional: row.email_institucional,
+        telefono_contacto: row.telefono_contacto,
+        id_carrera: Number(row.id_carrera),
+        semestre_actual: Number(row.semestre_actual),
+        activo: row.activo,
+      };
+
+      await createAlumno(alumnoPayload);
+
+      for (const adeudo of row.adeudos) {
+        const concepto = findConceptoByToken(adeudo.concepto);
+        if (!concepto) {
+          bulkErrors.value.push(
+            `Matrícula ${row.matricula}: concepto "${adeudo.concepto}" no existe en catálogo.`,
+          );
+          continue;
+        }
+
+        const idCiclo = adeudo.id_ciclo ?? cicloActualId;
+        if (!idCiclo) {
+          bulkErrors.value.push(
+            `Matrícula ${row.matricula}: no hay ciclo escolar para crear adeudo de "${concepto.clave}".`,
+          );
+          continue;
+        }
+
+        const pagado = Boolean(adeudo.pagado);
+        const cuentaPayload: CuentaPayload = {
+          matricula: row.matricula,
+          concepto: concepto.clave,
+          id_ciclo: Number(idCiclo),
+          monto: Number(adeudo.monto ?? concepto.monto_default ?? 0),
+          pagado,
+          fecha_pago: pagado ? (adeudo.fecha_pago ?? new Date().toISOString().slice(0, 10)) : null,
+          id_metodo: pagado ? (adeudo.id_metodo ?? null) : null,
+        };
+
+        await createCuenta(cuentaPayload);
+      }
+
       bulkProgress.value.processed++;
     } catch (err: any) {
       bulkErrors.value.push(`Error en matrícula ${row.matricula}: ${err.message || 'Fallo desconocido'}`);
@@ -1177,9 +1717,8 @@ function animateEntrance() {
 
 // ============= HOOKS =============
 onMounted(() => {
-  // Si es coordinador, forzar su carrera
-  if (auth.isCoordinator && auth.userCareerId) {
-    filterCarrera.value = auth.userCareerId;
+  if (!auth.can('filters.carrera.change') && auth.userCareerId) {
+    filterCarrera.value = Number(auth.userCareerId);
   }
   loadData().then(() => {
     // Dar un poco más de tiempo para que el DOM se renderice tras la carga de datos
@@ -1187,10 +1726,23 @@ onMounted(() => {
   });
 });
 
+watch(
+  [
+    () => cuentaForm.value?.matricula,
+    () => cuentaForm.value?.id_ciclo,
+    () => cuentaForm.value?.concepto,
+    () => conceptos.value.length,
+  ],
+  () => {
+    if (!cuentaForm.value) return;
+    syncCuentaConceptoSelection();
+  },
+);
+
 // Vigilar cambios en el id_carrera del usuario (por si acaso)
 watch(() => auth.userCareerId, (newVal) => {
-  if (auth.isCoordinator && newVal) {
-    filterCarrera.value = newVal;
+  if (!auth.can('filters.carrera.change') && newVal) {
+    filterCarrera.value = Number(newVal);
   }
 });
 </script>
@@ -1278,6 +1830,40 @@ watch(() => auth.userCareerId, (newVal) => {
   min-width: 160px;
 }
 
+.alumno-modal-shell {
+  border: 1px solid #e3edf9;
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 26%);
+}
+
+.alumno-modal-shell :deep(.g-form-header) {
+  border-bottom: 1px solid #e8eaed;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.alumno-modal-shell :deep(.g-form-title) {
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: #202124;
+}
+
+.alumno-modal-shell :deep(.g-form-subtitle) {
+  color: #5f6368;
+}
+
+.alumno-modal-shell :deep(.g-form-grid) {
+  gap: 1rem 1.1rem;
+  padding: 0;
+}
+
+.alumno-modal-shell :deep(.g-form-actions) {
+  border-top: 1px solid #e8eaed;
+  padding-top: 0.9rem;
+  margin-top: 0.8rem;
+}
+
 .table-wrapper {
   overflow-x: auto;
   border-radius: 12px;
@@ -1328,6 +1914,17 @@ watch(() => auth.userCareerId, (newVal) => {
   color: #1a73e8;
 }
 
+.cell-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.cell-subtle-plan {
+  font-size: 0.75rem;
+  color: #5f6368;
+}
+
 .cell-centered {
   text-align: center;
 }
@@ -1339,38 +1936,65 @@ watch(() => auth.userCareerId, (newVal) => {
 }
 
 .cell-actions {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   white-space: nowrap;
 }
 
 .icon-button {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d6dbe3;
+  background: #ffffff;
+  color: #5f6368;
+  font-size: 1.1rem;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  border-radius: 10px;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
 }
 
+.icon-button .material-symbols-outlined {
+  font-size: 1.16rem;
+}
+
 .icon-button:hover {
-  background-color: rgba(60, 64, 67, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.16);
 }
 
 .icon-button:active {
-  background-color: rgba(60, 64, 67, 0.12);
+  transform: translateY(0);
 }
 
-.icon-button.icon-danger {
-  color: #d32f2f;
+.action-view {
+  color: #1a73e8;
+  background: #eef4ff;
+  border-color: #c8dcff;
 }
 
-.icon-button.icon-danger:hover {
-  background-color: rgba(211, 47, 47, 0.08);
+.action-edit {
+  color: #174ea6;
+  background: #e8f0fe;
+  border-color: #c6dafc;
+}
+
+.action-payments {
+  color: #0b8043;
+  background: #e9f7ef;
+  border-color: #c8e6d6;
+}
+
+.action-delete {
+  color: #d93025;
+  background: #fdeceb;
+  border-color: #f6c8c4;
 }
 
 .badge {
@@ -1404,13 +2028,13 @@ watch(() => auth.userCareerId, (newVal) => {
 }
 
 .chip-warning {
-  background-color: #fff3cd;
-  color: #7f6700;
+  background-color: #fef2c7;
+  color: #8a6100;
 }
 
 .chip-danger {
-  background-color: #fce8e6;
-  color: #d32f2f;
+  background-color: #fee2e2;
+  color: #b42318;
 }
 
 .chip-muted {
@@ -1654,13 +2278,15 @@ watch(() => auth.userCareerId, (newVal) => {
 }
 
 .icon-button-small {
-  background: none;
-  border: none;
-  font-size: 1.1rem;
+  width: 31px;
+  height: 31px;
+  border: 1px solid #d6dbe3;
+  background: #ffffff;
+  font-size: 1rem;
   cursor: pointer;
-  padding: 0.3rem 0.4rem;
+  padding: 0;
   border-radius: 6px;
-  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1668,16 +2294,19 @@ watch(() => auth.userCareerId, (newVal) => {
 }
 
 .icon-button-small:hover {
-  background-color: rgba(60, 64, 67, 0.08);
-  color: #202124;
+  transform: translateY(-1px);
 }
 
-.icon-button-small.icon-danger {
-  color: #d32f2f;
+.action-edit-small {
+  color: #174ea6;
+  background: #e8f0fe;
+  border-color: #c6dafc;
 }
 
-.icon-button-small.icon-danger:hover {
-  background-color: rgba(211, 47, 47, 0.08);
+.action-delete-small {
+  color: #d93025;
+  background: #fdeceb;
+  border-color: #f6c8c4;
 }
 
 .badge-muted {
@@ -1761,6 +2390,16 @@ watch(() => auth.userCareerId, (newVal) => {
   color: #3c4043;
 }
 
+.form-inline-hint {
+  margin: -0.2rem 0 0;
+  font-size: 0.78rem;
+  color: #8a6100;
+  background: #fef7e0;
+  border: 1px solid #f3de98;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+
 .form-textarea {
   width: 100%;
   padding: 0.75rem;
@@ -1804,6 +2443,11 @@ watch(() => auth.userCareerId, (newVal) => {
   .table-search-input,
   .table-filter-select {
     width: 100%;
+  }
+
+  .alumno-modal-shell {
+    padding: 0.8rem 0.75rem;
+    border-radius: 12px;
   }
 
   .table {

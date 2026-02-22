@@ -16,7 +16,7 @@
       <div>
         <h2 class="page-title">Alumnos</h2>
         <p class="page-subtitle">
-          Gestión de alumnos, datos de contacto y seguimiento académico.
+          Gestión de alumnos, datos de contacto y seguimiento del plan de estudio.
         </p>
       </div>
 
@@ -25,12 +25,8 @@
           Total: <strong>{{ alumnos.length }}</strong>
         </span>
 
-        <!-- Botón "Nuevo alumno" -->
-        <GoogleButton
-          size="sm"
-          color="#1a73e8"
-          @click="openCreateForm"
-        >
+        <!-- Botón "Nuevo alumno" - Visible para Admin y Coordinador -->
+        <GoogleButton v-if="auth.can('action.alumno.create')" size="sm" color="#1a73e8" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nuevo alumno
         </GoogleButton>
@@ -38,51 +34,24 @@
     </header>
 
     <!-- Tabla -->
-    <AlumnosTable
-      :alumnos="alumnos"
-      :carreras="carreras"
-      :loading="loadingList"
-      :error="error"
-      v-model:search="search"
-      @reload="loadAlumnos"
-      @edit="onEdit"
-      @delete="onDelete"
-    />
+    <AlumnosTable :alumnos="alumnos" :carreras="carreras" :loading="loadingList" :error="error" v-model:search="search"
+      @reload="loadAlumnos" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal: Crear / Editar alumno -->
-    <GoogleModal
-      v-model="showFormModal"
-      :icon="isEditing ? 'edit' : 'person_add'"
+    <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit' : 'person_add'"
       :title="isEditing ? 'Editar alumno' : 'Nuevo alumno'"
-      subtitle="Completa los campos obligatorios para guardar los cambios."
-      maxWidth="760px"
-      density="comfortable"
-      :showFooter="false"
-    >
-      <AlumnosForm
-        :form="form"
-        :carreras="carreras"
-        :is-editing="isEditing"
-        :loading="loadingCreate"
-        @submit="handleFormSubmit"
-        @cancel-edit="handleCancelForm"
-        @download-template="downloadTemplate"
-        @open-bulk-modal="openBulkModal"
-      />
+      subtitle="Completa los campos obligatorios para guardar los cambios." maxWidth="760px" density="comfortable"
+      :showFooter="false" :showAddAnother="!isEditing" v-model:addAnother="addAnother">
+      <AlumnosForm :form="form" :carreras="carreras" :conceptos="conceptos" :ciclos="ciclos" :metodos-pago="metodos"
+        :enable-initial-debt="false"
+        :is-editing="isEditing" :loading="loadingCreate" @submit="handleFormSubmit" @cancel-edit="handleCancelForm"
+        @download-template="downloadTemplate" @open-bulk-modal="openBulkModal" />
     </GoogleModal>
 
     <!-- Modal carga masiva -->
-    <AlumnosBulkModal
-      v-model="showBulkModal"
-      :file-name="bulkFileName"
-      :rows="bulkRows"
-      :errors="bulkErrors"
-      :parsing="bulkParsing"
-      :loading="bulkLoading"
-      :progress="bulkProgress"
-      @file-change="onBulkFileChange"
-      @upload="onBulkUpload"
-    />
+    <AlumnosBulkModal v-model="showBulkModal" :file-name="bulkFileName" :rows="bulkRows" :errors="bulkErrors"
+      :parsing="bulkParsing" :loading="bulkLoading" :progress="bulkProgress" @file-change="onBulkFileChange"
+      @upload="onBulkUpload" />
   </section>
 </template>
 
@@ -90,6 +59,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import * as XLSX from 'xlsx';
+import { useAuthStore } from '../stores/auth';
 
 import AlumnosForm from '../components/formulario/AlumnosForm.vue';
 import AlumnosTable from '../components/formulario/AlumnosTable.vue';
@@ -109,10 +79,17 @@ import {
   getCarreras,
   type Carrera,
 } from '../services/carreras';
+import { getConceptos, type Concepto } from '../services/conceptos';
+import { getCiclosEscolares, type CicloEscolar } from '../services/ciclos-escolares';
+import { getMetodosPago, type MetodoPago } from '../services/metodo-pago';
+import { createCuenta, type CuentaPayload } from '../services/cuentas';
 
 // ---------- Estado principal ----------
 const alumnos = ref<Alumno[]>([]);
 const carreras = ref<Carrera[]>([]);
+const conceptos = ref<Concepto[]>([]);
+const ciclos = ref<CicloEscolar[]>([]);
+const metodos = ref<MetodoPago[]>([]);
 
 const loadingList = ref(false);
 const loadingCreate = ref(false);
@@ -135,8 +112,11 @@ const bulkErrors = ref<string[]>([]);
 const bulkLoading = ref(false);
 const bulkProgress = ref({ processed: 0, total: 0 });
 
+// Agregar otro
+const addAnother = ref(false);
+
 // ---------- Helpers de formulario ----------
-const createEmptyForm = (): AlumnoCreate & { activo: boolean } => ({
+const createEmptyForm = (): any => ({
   matricula: '',
   nombre_completo: '',
   email_institucional: '',
@@ -144,11 +124,13 @@ const createEmptyForm = (): AlumnoCreate & { activo: boolean } => ({
   id_carrera: null as any,
   semestre_actual: 1,
   activo: true,
+  // Campos extra para adeudo
+  con_adeudo: false,
+  adeudos: []
 });
 
-const form = ref<AlumnoCreate & { activo: boolean }>(
-  createEmptyForm(),
-);
+const auth = useAuthStore();
+const form = ref<any>(createEmptyForm());
 
 const resetForm = () => {
   form.value = createEmptyForm();
@@ -173,14 +155,32 @@ async function loadAlumnos() {
 async function loadCarreras() {
   try {
     loadingCarreras.value = true;
-    const data = await getCarreras();
-    carreras.value = data;
+    carreras.value = await getCarreras();
   } catch (e) {
     console.error(e);
   } finally {
     loadingCarreras.value = false;
   }
 }
+
+async function loadExtras() {
+  try {
+    const [concData, ciclData, metData] = await Promise.all([
+      getConceptos(),
+      getCiclosEscolares(),
+      getMetodosPago()
+    ]);
+    conceptos.value = concData;
+    ciclos.value = ciclData;
+    metodos.value = metData;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([loadAlumnos(), loadCarreras(), loadExtras()]);
+});
 
 // ---------- CRUD Alumno ----------
 async function saveAlumno() {
@@ -189,14 +189,33 @@ async function saveAlumno() {
     loadingCreate.value = true;
 
     if (isEditing.value && editingMatricula.value) {
-      const { matricula, ...payload } = form.value;
+      const { matricula, con_adeudo, adeudos, ...payload } = form.value;
       const updated = await updateAlumno(editingMatricula.value, payload);
       alumnos.value = alumnos.value.map((a) =>
         a.matricula === editingMatricula.value ? updated : a,
       );
     } else {
-      const created = await createAlumno(form.value);
+      const { con_adeudo, adeudos, ...createPayload } = form.value;
+      // 1. Crear alumno
+      const created = await createAlumno(createPayload as AlumnoCreate);
       alumnos.value.push(created);
+
+      // 2. Crear adeudos iniciales si aplica
+      if (form.value.con_adeudo && form.value.adeudos && form.value.adeudos.length > 0) {
+        for (const adeudo of form.value.adeudos) {
+          if (!adeudo.concepto) continue;
+          const payload: CuentaPayload = {
+            matricula: form.value.matricula,
+            concepto: adeudo.concepto,
+            id_ciclo: adeudo.id_ciclo || 1,
+            monto: adeudo.monto || 0,
+            pagado: adeudo.pagado || false,
+            fecha_pago: adeudo.pagado ? adeudo.fecha_pago : null,
+            id_metodo: adeudo.pagado ? adeudo.id_metodo : null,
+          };
+          await createCuenta(payload);
+        }
+      }
     }
 
     resetForm();
@@ -243,7 +262,11 @@ function onCancelEdit() {
 // Handlers que conectan el form con el modal
 async function handleFormSubmit() {
   await saveAlumno();
-  showFormModal.value = false;
+  if (addAnother.value && !isEditing.value) {
+    // Ya saveAlumno hizo resetForm()
+  } else {
+    showFormModal.value = false;
+  }
 }
 
 function handleCancelForm() {
@@ -332,6 +355,11 @@ async function onBulkFileChange(event: Event) {
     }
 
     const worksheet = workbook.Sheets[sheetName];
+    if (!worksheet) {
+      bulkErrors.value.push('No se pudo encontrar la hoja especificada.');
+      bulkParsing.value = false;
+      return;
+    }
 
     const json = XLSX.utils.sheet_to_json<any>(worksheet, { defval: '' });
 
@@ -473,18 +501,10 @@ watch(showBulkModal, (value) => {
   }
 });
 
-onMounted(async () => {
-  await Promise.all([loadAlumnos(), loadCarreras()]);
-});
+// Eliminado de onMounted original ya que se movió arriba o se maneja diferente
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
 /* Animación suave tipo Google */
 .g-page-animate {
   animation: g-fade-in 180ms ease-out;
@@ -495,6 +515,7 @@ onMounted(async () => {
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

@@ -1,15 +1,36 @@
 <template>
-  <div class="g-input-wrapper" :class="[`g-input--${size}`, { 'g-input--error': !!error }]">
+  <div
+    class="g-input-wrapper"
+    :class="[
+      `g-input--${size}`,
+      { 'g-input--error': !!error, 'g-input--textarea': type === 'textarea' },
+      attrsClass,
+    ]"
+    :style="attrsStyle"
+  >
     <label v-if="label" class="g-input-label">
       {{ label }}
     </label>
 
-    <div
-      class="g-input-container"
-      :style="{ '--g-input-focus': color }"
-    >
-      <input
+    <div class="g-input-container" :style="{ '--g-input-focus': color }">
+      <textarea
+        v-if="type === 'textarea'"
         class="g-input"
+        v-bind="inputAttrs"
+        :value="stringValue"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :maxlength="maxlength"
+        :rows="rows"
+        @input="onInput"
+        @blur="onBlur"
+        @focus="onFocus"
+      ></textarea>
+
+      <input
+        v-else
+        class="g-input"
+        v-bind="inputAttrs"
         :type="inputType"
         :value="stringValue"
         :placeholder="placeholder"
@@ -25,13 +46,21 @@
     <p v-if="error" class="g-input-error">
       {{ error }}
     </p>
+
+    <p v-else-if="hint" class="g-input-hint">
+      {{ hint }}
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useAttrs, type StyleValue } from 'vue';
 
-type Kind = 'text' | 'number' | 'email';
+defineOptions({
+  inheritAttrs: false,
+});
+
+type InputType = 'text' | 'number' | 'email' | 'password' | 'textarea' | 'date';
 type Size = 'sm' | 'md' | 'lg';
 type Validation = 'none' | 'email';
 
@@ -39,13 +68,15 @@ const props = defineProps<{
   modelValue?: string | number | null;
   label?: string;
   placeholder?: string;
-  kind?: Kind;              // text | number | email
-  size?: Size;              // sm | md | lg
-  color?: string;           // color del foco (border/shadow)
+  type?: InputType;
+  size?: Size;
+  color?: string;
   disabled?: boolean;
   maxlength?: number;
-  validation?: Validation;  // 'none' | 'email'
-  errorMessage?: string;    // error externo opcional
+  hint?: string;
+  validation?: Validation;
+  errorMessage?: string;
+  rows?: number; // Para textarea
 }>();
 
 const emit = defineEmits<{
@@ -54,56 +85,56 @@ const emit = defineEmits<{
   (e: 'focus'): void;
 }>();
 
-const kind = computed<Kind>(() => props.kind ?? 'text');
+const type = computed<InputType>(() => props.type ?? 'text');
 const size = computed<Size>(() => props.size ?? 'md');
-const color = computed(() => props.color ?? '#1a73e8'); // azul Google
+const color = computed(() => props.color ?? '#1a73e8');
 const disabled = computed(() => props.disabled ?? false);
 const validation = computed<Validation>(() => props.validation ?? 'none');
+const rows = computed(() => props.rows ?? 3);
+const attrs = useAttrs();
 
 const internalError = ref<string | null>(null);
 
-// Valor como string para el input
 const stringValue = computed(() =>
   props.modelValue != null ? String(props.modelValue) : '',
 );
 
-// Tipo real del input
 const inputType = computed(() => {
-  if (kind.value === 'email') return 'email';
-  // Para number usamos type="text" y filtramos, así evitamos flechitas feas
-  if (kind.value === 'number') return 'text';
+  if (type.value === 'email') return 'email';
+  if (type.value === 'password') return 'password';
+  if (type.value === 'number') return 'number';
+  if (type.value === 'date') return 'date';
   return 'text';
 });
 
-// inputmode para móviles
 const inputMode = computed(() => {
-  if (kind.value === 'number') return 'numeric';
-  if (kind.value === 'email') return 'email';
+  if (type.value === 'number') return 'numeric';
+  if (type.value === 'email') return 'email';
   return 'text';
 });
 
-// Error final a mostrar (externo o interno)
 const error = computed(() => props.errorMessage ?? internalError.value);
 
-// Handlers
-function onInput(event: Event) {
-  const target = event.target as HTMLInputElement;
-  let value = target.value;
+const attrsClass = computed(() => attrs.class as unknown);
+const attrsStyle = computed(() => attrs.style as StyleValue | undefined);
 
-  if (kind.value === 'number') {
-    // Solo dígitos
-    value = value.replace(/[^\d]/g, '');
-    target.value = value;
-  }
+const inputAttrs = computed(() => {
+  const rest = { ...attrs } as Record<string, unknown>;
+  delete rest.class;
+  delete rest.style;
+  return rest;
+});
+
+function onInput(event: Event) {
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+  const value = target.value;
 
   internalError.value = null;
-
-  // Emitimos string, el padre puede usar v-model.number si quiere número
   emit('update:modelValue', value === '' ? null : value);
 }
 
 function onBlur() {
-  if (kind.value === 'email' && validation.value === 'email') {
+  if (type.value === 'email' && validation.value === 'email') {
     const value = stringValue.value.trim();
     if (value) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,7 +145,6 @@ function onBlur() {
       internalError.value = null;
     }
   }
-
   emit('blur');
 }
 
@@ -153,27 +183,29 @@ function onFocus() {
   color: #5f6368;
 }
 
-/* Contenedor del input */
 .g-input-container {
-  border-radius: 999px;
-  border: 1px solid #dadce0;
-  background-color: #ffffff;
+  border-radius: 4px 4px 0 0; /* MD3 text field style */
+  border-bottom: 2px solid #5f6368;
+  background-color: var(--md-sys-color-surface-variant, #f1f3f4);
   display: flex;
   align-items: center;
   transition:
     border-color 0.15s ease,
-    box-shadow 0.15s ease,
     background-color 0.15s ease;
+}
+
+.g-input-container:hover {
+  background-color: #e8eaed;
 }
 
 .g-input {
   flex: 1;
+  width: 100%;
   border: none;
   outline: none;
   background: transparent;
   padding: 0.4rem 0.7rem;
-  border-radius: 999px;
-
+  border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
   color: #202124;
@@ -183,24 +215,19 @@ function onFocus() {
   color: #9aa0a6;
 }
 
-/* Focus dentro del contenedor */
-.g-input:focus-visible,
-.g-input:focus {
-  outline: none;
+.g-input--textarea .g-input-container {
+  border-radius: 8px;
 }
 
-.g-input:focus + .dummy {
-  outline: none;
+.g-input--textarea .g-input {
+  min-height: 60px;
+  resize: vertical;
 }
 
-/* Focus mediante :has (solo soportado en navegadores modernos).
-   Si no lo soporta, de todos modos el input se ve bien. */
 .g-input-container:focus-within {
-  border-color: var(--g-input-focus, #1a73e8);
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
+  border-bottom-color: var(--g-input-focus, var(--md-sys-color-primary));
 }
 
-/* Error */
 .g-input--error .g-input-container {
   border-color: #d93025;
   box-shadow: 0 0 0 1px rgba(217, 48, 37, 0.12);
@@ -209,5 +236,12 @@ function onFocus() {
 .g-input-error {
   font-size: 0.75rem;
   color: #d93025;
+  margin: 0.1rem 0 0 0;
+}
+
+.g-input-hint {
+  font-size: 0.75rem;
+  color: #5f6368;
+  margin: 0.1rem 0 0 0;
 }
 </style>

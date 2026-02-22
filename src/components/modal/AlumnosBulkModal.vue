@@ -1,21 +1,13 @@
 <template>
-  <BaseModal
-    v-model="innerVisible"
-    title="Carga masiva de alumnos"
-    subtitle="Usa la plantilla Excel para registrar varios alumnos en una sola operación."
-    :close-on-backdrop="!loading"
-  >
+  <GoogleModal v-model="innerVisible" title="Carga masiva de alumnos" icon="upload_file"
+    subtitle="Usa la plantilla Excel para registrar varios alumnos en una sola operación." maxWidth="800px"
+    :closeOnOverlay="!loading" :showFooter="false">
     <div class="bulk-body">
       <div class="bulk-upload-row">
         <label class="field">
           <span class="field-label">Archivo Excel (.xlsx / .xls)</span>
-          <input
-            type="file"
-            accept=".xlsx,.xls"
-            @change="onFileChange"
-            :disabled="parsing || loading"
-            class="field-input"
-          />
+          <input type="file" accept=".xlsx,.xls" @change="onFileChange" :disabled="parsing || loading"
+            class="field-input" />
         </label>
         <div v-if="fileName" class="bulk-file-name">
           Archivo seleccionado:
@@ -31,7 +23,10 @@
         <code>telefono_contacto</code>,
         <code>id_carrera</code>,
         <code>semestre_actual</code>,
-        <code>activo</code> (opcional).
+        <code>activo</code> (opcional),
+        <code>conceptos</code> (opcional, varios separados por <code>|</code>),
+        <code>id_ciclo_adeudo</code> (opcional),
+        <code>pagado_adeudo</code> (opcional).
       </p>
 
       <div v-if="parsing" class="bulk-status">
@@ -60,16 +55,14 @@
                 <th>Nombre</th>
                 <th>Email</th>
                 <th>Teléfono</th>
-                <th>ID Carrera</th>
+                <th>ID Plan</th>
                 <th>Semestre</th>
                 <th>Activo</th>
+                <th>Conceptos (adeudo)</th>
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="(row, idx) in rows.slice(0, 10)"
-                :key="row.matricula + '-' + idx"
-              >
+              <tr v-for="(row, idx) in rows.slice(0, 10)" :key="row.matricula + '-' + idx">
                 <td>{{ row.matricula }}</td>
                 <td>{{ row.nombre_completo }}</td>
                 <td>{{ row.email_institucional }}</td>
@@ -77,6 +70,7 @@
                 <td>{{ row.id_carrera }}</td>
                 <td>{{ row.semestre_actual }}</td>
                 <td>{{ row.activo ? 'Sí' : 'No' }}</td>
+                <td>{{ row.conceptos_display || '-' }}</td>
               </tr>
             </tbody>
           </table>
@@ -102,20 +96,10 @@
     </div>
 
     <template #footer>
-      <button
-        type="button"
-        class="btn btn-text"
-        @click="innerVisible = false"
-        :disabled="loading"
-      >
+      <button type="button" class="btn btn-text" @click="innerVisible = false" :disabled="loading">
         Cerrar
       </button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        @click="$emit('upload')"
-        :disabled="loading || !rows.length"
-      >
+      <button type="button" class="btn btn-primary" @click="$emit('upload')" :disabled="loading || !rows.length">
         <span v-if="loading">
           Cargando {{ progress.processed }} / {{ progress.total }}...
         </span>
@@ -124,19 +108,23 @@
         </span>
       </button>
     </template>
-  </BaseModal>
+  </GoogleModal>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { PropType } from 'vue';
-import BaseModal from './BaseModal.vue';
+import GoogleModal from './modal.vue';
 import type { AlumnoCreate } from '../../services/alumnos';
+
+type BulkPreviewRow = AlumnoCreate & {
+  activo: boolean;
+  conceptos_display?: string;
+};
 
 const props = defineProps<{
   modelValue: boolean;
   fileName: string;
-  rows: (AlumnoCreate & { activo: boolean })[];
+  rows: BulkPreviewRow[];
   errors: string[];
   parsing: boolean;
   loading: boolean;

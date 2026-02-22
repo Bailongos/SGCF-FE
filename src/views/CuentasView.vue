@@ -29,8 +29,7 @@
           <strong>{{ formatMoney(totalPendiente) }}</strong>
         </span>
 
-        <!-- Nueva cuenta - Visible para Admin y Caja -->
-        <GoogleButton v-if="auth.isAdmin || auth.isCashier" size="sm" color="#1a73e8" @click="openCreateForm">
+        <GoogleButton v-if="auth.can('action.cuenta.create')" size="sm" color="#1a73e8" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nueva cuenta
         </GoogleButton>
@@ -64,8 +63,11 @@
           </p>
 
           <!-- Concepto -->
-          <GoogleSelect v-model="form.concepto" :options="conceptoOptions" label="Concepto *"
+          <GoogleSelect v-model="form.concepto" :options="availableConceptoOptions" label="Concepto *"
             placeholder="Selecciona un concepto..." size="md" />
+          <p v-if="!availableConceptoOptions.length" class="hint span-2">
+            Este alumno ya tiene cuenta para todos los conceptos en el ciclo seleccionado.
+          </p>
 
           <!-- Monto -->
           <GoogleInput v-model="form.monto" label="Monto *" type="number" step="0.01" min="0" placeholder="0.00"
@@ -187,6 +189,35 @@ const conceptoOptions = computed<SelectOption[]>(() =>
   })),
 );
 
+function getTakenConceptos(matricula: string, idCiclo: number, excludeId?: number | null): Set<string> {
+  const taken = new Set<string>();
+
+  for (const cuenta of cuentas.value) {
+    if (excludeId != null && cuenta.id_cuenta === excludeId) continue;
+    if (String(cuenta.matricula).trim() !== String(matricula).trim()) continue;
+    if (Number(cuenta.id_ciclo) !== Number(idCiclo)) continue;
+
+    taken.add(String(cuenta.concepto).trim().toLowerCase());
+  }
+
+  return taken;
+}
+
+const availableConceptoOptions = computed<SelectOption[]>(() => {
+  const matricula = String(form.value.matricula ?? '').trim();
+  const idCiclo = Number(form.value.id_ciclo ?? 0);
+
+  if (!matricula || !idCiclo) return conceptoOptions.value;
+
+  const taken = getTakenConceptos(matricula, idCiclo, isEditing.value ? form.value.id_cuenta : null);
+  const current = String(form.value.concepto ?? '').trim().toLowerCase();
+
+  return conceptoOptions.value.filter((option) => {
+    const value = String(option.value).trim().toLowerCase();
+    return value === current || !taken.has(value);
+  });
+});
+
 const metodoOptions = computed<SelectOption[]>(() => [
   { value: 0, label: 'Sin especificar' },
   ...metodos.value.map((m) => ({
@@ -213,6 +244,21 @@ function resetForm() {
   isEditing.value = false;
 }
 
+function syncConceptSelection() {
+  const current = String(form.value.concepto ?? '').trim();
+  const exists = availableConceptoOptions.value.some((option) => String(option.value).trim() === current);
+
+  if (exists) return;
+
+  const fallback = availableConceptoOptions.value[0];
+  if (!fallback) {
+    form.value.concepto = '';
+    return;
+  }
+
+  form.value.concepto = String(fallback.value) as ConceptoCuenta;
+}
+
 
 function formatMoney(value: number | null | undefined): string {
   const n = Number(value ?? 0);
@@ -231,6 +277,47 @@ function formatDate(iso: string | null | undefined): string {
 function toDateInputValue(iso: string | null | undefined): string {
   if (!iso) return '';
   return iso.slice(0, 10);
+}
+
+function isConceptConstraintError(err: unknown): boolean {
+  const data = (err as any)?.response?.data;
+  const code = String(data?.code ?? '');
+  const message = String(data?.message ?? '').toLowerCase();
+  return code === '23514' && message.includes('cuentas_por_cobrar_concepto_check');
+}
+
+function isDuplicateCuentaError(err: unknown): boolean {
+  const data = (err as any)?.response?.data;
+  const code = String(data?.code ?? '');
+  const message = String(data?.message ?? '').toLowerCase();
+
+  return (
+    code === '23505' &&
+    (message.includes('idx_cxc_matricula_concepto_ciclo') ||
+      message.includes('llave duplicada'))
+  );
+}
+
+function getApiErrorMessage(err: unknown): string {
+  const data = (err as any)?.response?.data;
+  if (data?.message) return String(data.message);
+  if (err instanceof Error) return err.message;
+  return 'Error inesperado';
+}
+
+function isSameCuentaKey(cuenta: Cuenta, payload: CuentaPayload): boolean {
+  return (
+    String(cuenta.matricula).trim() === String(payload.matricula).trim() &&
+    String(cuenta.concepto).trim().toLowerCase() === String(payload.concepto).trim().toLowerCase() &&
+    Number(cuenta.id_ciclo) === Number(payload.id_ciclo)
+  );
+}
+
+function findDuplicateCuenta(payload: CuentaPayload, excludeId?: number | null): Cuenta | undefined {
+  return cuentas.value.find((cuenta) => {
+    if (excludeId != null && cuenta.id_cuenta === excludeId) return false;
+    return isSameCuentaKey(cuenta, payload);
+  });
 }
 
 function getAlumnoNombre(matricula: string): string {
@@ -259,6 +346,18 @@ watch(
     } else if (!form.value.fecha_pago) {
       form.value.fecha_pago = new Date().toISOString().slice(0, 10);
     }
+  },
+);
+
+watch(
+  [
+    () => form.value.matricula,
+    () => form.value.id_ciclo,
+    () => form.value.concepto,
+    () => conceptos.value.length,
+  ],
+  () => {
+    syncConceptSelection();
   },
 );
 
@@ -332,8 +431,8 @@ async function loadCatalogos() {
       }
     }
 
-    if (!form.value.concepto && conceptoOptions.value.length > 0) {
-      form.value.concepto = conceptoOptions.value[0]!.value as ConceptoCuenta;
+    if (!form.value.concepto) {
+      syncConceptSelection();
     }
 
   } catch (e) {
@@ -361,6 +460,7 @@ async function loadCuentas() {
 function openCreateForm() {
   resetForm();
   isEditing.value = false;
+  syncConceptSelection();
   showFormModal.value = true;
 }
 
@@ -392,6 +492,12 @@ async function saveCuenta() {
       return;
     }
 
+    const duplicate = findDuplicateCuenta(payload, isEditing.value ? form.value.id_cuenta : null);
+    if (duplicate) {
+      error.value = `Ya existe la cuenta #${duplicate.id_cuenta} para ${payload.matricula}, ${payload.concepto} y ciclo ${getCicloNombre(payload.id_ciclo)}.`;
+      return;
+    }
+
     if (isEditing.value && form.value.id_cuenta != null) {
       const updated = await updateCuenta(form.value.id_cuenta, payload);
       cuentas.value = cuentas.value.map((c) =>
@@ -407,9 +513,19 @@ async function saveCuenta() {
     resetForm();
   } catch (e) {
     console.error('Error al guardar cuenta', e);
+    if (isConceptConstraintError(e)) {
+      error.value = 'El backend rechazo el concepto por la restriccion cuentas_por_cobrar_concepto_check. Revisa los conceptos permitidos en BD.';
+      return;
+    }
+
+    if (isDuplicateCuentaError(e)) {
+      error.value = 'Cuenta duplicada: ya existe una cuenta con la misma matricula, concepto y ciclo.';
+      return;
+    }
+
     error.value = isEditing.value
-      ? 'Error al actualizar la cuenta'
-      : 'Error al crear la cuenta';
+      ? `Error al actualizar la cuenta: ${getApiErrorMessage(e)}`
+      : `Error al crear la cuenta: ${getApiErrorMessage(e)}`;
   } finally {
     loadingSave.value = false;
   }
@@ -444,6 +560,7 @@ function onEdit(cuenta: Cuenta) {
       : null,
     id_metodo: cuenta.id_metodo ?? 0,
   };
+  syncConceptSelection();
   showFormModal.value = true;
 }
 

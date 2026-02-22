@@ -1,15 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
 
-.back-to-home {
-    margin-bottom: 1rem;
+*, *::before, *::after {
+  box-sizing: border-box;
 }
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* MD3 Color Palette */
+  --md-sys-color-primary: #1a73e8;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #d3e3fd;
+  --md-sys-color-on-primary-container: #041e49;
+
+  --md-sys-color-secondary: #5f6368;
+  --md-sys-color-on-secondary: #ffffff;
+
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #1f1f1f;
+  --md-sys-color-surface-variant: #f1f3f4;
+  --md-sys-color-on-surface-variant: #444746;
+
+  --md-sys-color-background: #f8f9fa;
+  --md-sys-color-on-background: #1f1f1f;
+
+  --md-sys-color-error: #b3261e;
+  --md-sys-color-on-error: #ffffff;
+
+  /* Typography */
+  --md-sys-typescale-body-large-font: "Roboto", sans-serif;
+  --md-sys-typescale-body-large-size: 16px;
+
+  font-family: var(--md-sys-typescale-body-large-font);
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: light;
+  color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-background);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,67 +43,112 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-surface);
+  overflow-x: hidden;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+a {
+  font-weight: 500;
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Roboto", sans-serif;
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+  border-radius: 20px; /* MD3 highly rounded buttons */
+  border: none;
+  padding: 0.6em 1.5em;
+  font-size: 0.875rem;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition:
+    background-color 0.2s,
+    box-shadow 0.2s;
+  box-shadow:
+    0 1px 2px 0 rgba(60, 64, 67, 0.3),
+    0 1px 3px 1px rgba(60, 64, 67, 0.15); /* Elevation 1 */
 }
 
-.card {
-  padding: 2em;
+button:hover {
+  background-color: #1765cc;
+  box-shadow:
+    0 1px 3px 0 rgba(60, 64, 67, 0.3),
+    0 4px 8px 3px rgba(60, 64, 67, 0.15); /* Elevation 2 */
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 
 #app {
-  max-width: 1280px;
+  max-width: 1600px; /* Increased slightly to allow more room for gutters */
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  text-align: left;
+  padding: 0 1.5rem; /* Increased starting gutter */
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@media (min-width: 1024px) {
+  #app {
+    padding: 0 3rem; /* Generous gutter for large screens */
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1360px; /* Focused content width */
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.card {
+  background-color: var(--md-sys-color-surface);
+  border-radius: 16px; /* slightly more rounded for MD3 */
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px 0 rgba(60, 64, 67, 0.1),
+              0 1px 2px 0 rgba(60, 64, 67, 0.06);
+  border: 1px solid var(--md-sys-color-surface-variant);
+}
+
+/* Utils */
+.back-to-home {
+  margin-bottom: 1rem;
+}
+
+/* Responsive adjustments for global page headers */
+.page-header {
+  display: flex;
+  flex-wrap: wrap !important;
+  gap: 1rem;
+}
+
+.page-header-meta {
+  display: flex;
+  flex-wrap: wrap !important;
+  gap: 0.5rem;
 }

@@ -5,15 +5,16 @@ export interface Usuario {
   id_usuario: number;
   username: string;
   id_rol: number;
-  matricula_alumno: string | null;
+  id_carrera: number | null;
   activo: boolean;
+  rol_nombre?: string;
 }
 
 export interface UsuarioPayload {
   username: string;
   password?: string; // opcional en update
   id_rol: number;
-  matricula_alumno?: string | null;
+  id_carrera?: number | null;
   activo?: boolean;
 }
 

@@ -2,7 +2,8 @@
 import { api } from './api';
 
 // Sólo estos dos conceptos por ahora
-export type ConceptoCuenta = 'UADEC' | 'ESCUELA';
+// El concepto ahora puede ser cualquier clave definida en el catálogo de Conceptos
+export type ConceptoCuenta = string;
 
 export interface Cuenta {
   id_cuenta: number;

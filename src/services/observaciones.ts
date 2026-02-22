@@ -5,6 +5,7 @@ export interface Observacion {
   id_observacion: number;
   matricula: string;
   detalle: string;
+  taller?: string | null;
   id_autor: number | null;
   fecha: string; // viene de la columna TIMESTAMP/DATE
 }
@@ -12,6 +13,7 @@ export interface Observacion {
 export interface ObservacionPayload {
   matricula: string;
   detalle: string;
+  taller?: string | null;
   id_autor: number | null;
 }
 

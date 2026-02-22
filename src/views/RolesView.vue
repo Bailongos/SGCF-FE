@@ -16,7 +16,7 @@
       <div>
         <h2 class="page-title">Roles de usuario</h2>
         <p class="page-subtitle">
-          Administra los perfiles de acceso del sistema (Administrador, Caja, Alumno, etc.).
+          Administra los perfiles de acceso del sistema (Administrador, Coordinador, Caja, etc.).
         </p>
       </div>
       <div class="page-header-meta">
@@ -24,11 +24,7 @@
           Total: <strong>{{ roles.length }}</strong>
         </span>
 
-        <GoogleButton
-          size="sm"
-          color="#1a73e8"
-          @click="openCreateForm"
-        >
+        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nuevo rol
         </GoogleButton>
@@ -36,48 +32,22 @@
     </header>
 
     <!-- Tabla genérica googlesca -->
-    <GoogleTable
-      :rows="roles"
-      :columns="rolesColumns"
-      rowKey="id_rol"
-      :loading="loadingList"
-      :error="error"
-      v-model:search="search"
-      title="Listado de roles"
-      subtitle="Edita o elimina roles existentes. Evita borrar roles asignados a usuarios activos."
-      icon="shield_person"
-      :showReload="true"
-      :useDefaultActions="true"
-      :searchKeys="['nombre_rol']"
-      :successMessage="tableSuccessMessage"
-      emptyMessage="No hay roles que coincidan con el filtro."
-      @reload="loadRoles"
-      @edit="onEdit"
-      @delete="onDelete"
-    />
+    <GoogleTable :rows="roles" :columns="rolesColumns" rowKey="id_rol" :loading="loadingList" :error="error"
+      v-model:search="search" title="Listado de roles"
+      subtitle="Edita o elimina roles existentes. Evita borrar roles asignados a usuarios activos." icon="shield_person"
+      :showReload="true" :useDefaultActions="true" :searchKeys="['nombre_rol']" :successMessage="tableSuccessMessage"
+      emptyMessage="No hay roles que coincidan con el filtro." @reload="loadRoles" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar rol -->
-    <GoogleModal
-      v-model="showFormModal"
-      :icon="isEditing ? 'shield_person' : 'group_add'"
+    <GoogleModal v-model="showFormModal" :icon="isEditing ? 'shield_person' : 'group_add'"
       :title="isEditing ? 'Editar rol' : 'Nuevo rol'"
-      subtitle="Define los roles que se usarán para asignar permisos a los usuarios."
-      maxWidth="600px"
-      density="comfortable"
-      :confirmLoading="loadingSave"
-      :confirmText="isEditing ? 'Actualizar rol' : 'Guardar rol'"
-      cancelText="Cancelar"
-      @confirm="handleFormSubmit"
-      @cancel="handleCancelForm"
-    >
+      subtitle="Define los roles que se usarán para asignar permisos a los usuarios." maxWidth="600px"
+      density="comfortable" :confirmLoading="loadingSave" :confirmText="isEditing ? 'Actualizar rol' : 'Guardar rol'"
+      cancelText="Cancelar" @confirm="handleFormSubmit" @cancel="handleCancelForm">
       <form @submit.prevent="handleFormSubmit" class="rol-form">
         <div class="rol-form-grid">
-          <GoogleInput
-            v-model="form.nombre_rol"
-            label="Nombre del rol *"
-            placeholder="Ej. Administrador, Caja, Alumno"
-            required
-          />
+          <GoogleInput v-model="form.nombre_rol" label="Nombre del rol *" placeholder="Ej. Administrador, Coordinador, Caja"
+            required />
         </div>
         <!-- Botones los maneja el footer del modal -->
       </form>
@@ -246,12 +216,6 @@ onMounted(loadRoles);
 </script>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
 /* Animación suave tipo Google */
 .g-page-animate {
   animation: g-fade-in 180ms ease-out;
@@ -262,6 +226,7 @@ onMounted(loadRoles);
     opacity: 0;
     transform: translateY(4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
