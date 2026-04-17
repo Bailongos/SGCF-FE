@@ -14,33 +14,8 @@ import {
  * CONFIGURACIÓN DE MSAL (M Microsoft Authentication Library)
  * Sigue las mejores prácticas para aplicaciones de página única (SPA).
  */
-const clientId = String(
-  import.meta.env.VITE_MSAL_CLIENT_ID ?? import.meta.env.VITE_MS_CLIENT_ID ?? ''
-).trim();
-
-const tenantId =
-  String(
-    import.meta.env.VITE_MSAL_TENANT_ID ?? import.meta.env.VITE_MS_TENANT_ID ?? 'common'
-  ).trim() || 'common';
-
-let missingConfigWarned = false;
-
-function ensureMsalConfig(throwOnMissing = false): boolean {
-  if (clientId) return true;
-
-  if (!missingConfigWarned) {
-    console.warn(
-      '[MSAL] VITE_MSAL_CLIENT_ID no esta configurado; Microsoft SSO quedara deshabilitado.'
-    );
-    missingConfigWarned = true;
-  }
-
-  if (throwOnMissing) {
-    throw new Error('Configura VITE_MSAL_CLIENT_ID para habilitar el acceso con Microsoft.');
-  }
-
-  return false;
-}
+const clientId = import.meta.env.VITE_MS_CLIENT_ID || '';
+const tenantId = import.meta.env.VITE_MS_TENANT_ID || '';
 
 export const msalConfig: Configuration = {
   auth: {
@@ -82,8 +57,6 @@ let isMsalInitialized = false;
  * Debe completarse antes de cualquier interacción con el usuario.
  */
 export async function initializeMsal(): Promise<void> {
-  ensureMsalConfig(true);
-
   if (isMsalInitialized) return;
 
   try {
@@ -115,7 +88,6 @@ export async function initializeMsal(): Promise<void> {
  * Implementa el manejo de errores para evitar 'interaction_in_progress'.
  */
 export async function loginPopup(): Promise<AuthenticationResult> {
-  ensureMsalConfig(true);
   await initializeMsal();
 
   try {
@@ -139,8 +111,6 @@ export async function loginPopup(): Promise<AuthenticationResult> {
  * Intenta obtener el token desde la caché. Si falla, solicita interacción.
  */
 export async function getToken(): Promise<string | null> {
-  if (!ensureMsalConfig()) return null;
-
   await initializeMsal();
   
   const account = msalInstance.getActiveAccount();
@@ -170,8 +140,6 @@ export async function getToken(): Promise<string | null> {
  * Cierra la sesión tanto localmente como en los servidores de Microsoft.
  */
 export async function logoutMsal(): Promise<void> {
-  if (!ensureMsalConfig()) return;
-
   const account = msalInstance.getActiveAccount();
   if (account) {
     await msalInstance.logoutPopup({

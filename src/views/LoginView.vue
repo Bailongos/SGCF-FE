@@ -52,7 +52,6 @@
           variant="outlined"
           class="sso-btn ms-btn"
           :loading="loadingMicrosoft"
-          :disabled="!microsoftClientId"
           @click="startMicrosoftLogin"
         >
           <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="sso-brand-img" />
@@ -62,10 +61,6 @@
 
       <p v-if="!googleClientId" class="sso-hint">
         Configura la variable de entorno VITE_GOOGLE_CLIENT_ID para habilitar el acceso con Google.
-      </p>
-
-      <p v-if="!microsoftClientId" class="sso-hint">
-        Configura la variable de entorno VITE_MSAL_CLIENT_ID para habilitar el acceso con Microsoft.
       </p>
 
       <div class="register-entry">
@@ -106,9 +101,6 @@ const router = useRouter();
 const route = useRoute();
 
 const googleClientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '').trim();
-const microsoftClientId = String(
-  import.meta.env.VITE_MSAL_CLIENT_ID ?? import.meta.env.VITE_MS_CLIENT_ID ?? ''
-).trim();
 
 let googleInitialized = false;
 
@@ -267,11 +259,6 @@ async function startGoogleLogin() {
   }
 }
 async function startMicrosoftLogin() {
-  if (!microsoftClientId) {
-    error.value = 'Configura VITE_MSAL_CLIENT_ID para habilitar el acceso con Microsoft.';
-    return;
-  }
-
   loadingMicrosoft.value = true;
   error.value = null;
 
@@ -304,17 +291,13 @@ onMounted(() => {
 
   console.log('[Auth] Google Client ID:', googleClientId);
 
-  if (googleClientId) {
-    ensureGoogleIdentityReady()
-      .then(() => console.log('[Auth] Google ready'))
-      .catch((e) => console.warn('[Auth] Google init error:', e));
-  }
+  ensureGoogleIdentityReady()
+    .then(() => console.log('[Auth] Google ready'))
+    .catch((e) => console.warn('[Auth] Google init error:', e));
 
-  if (microsoftClientId) {
-    initializeMsal()
-      .then(() => console.log('[Auth] MSAL ready'))
-      .catch((e) => console.warn('[Auth] MSAL init error:', e));
-  }
+  initializeMsal()
+    .then(() => console.log('[Auth] MSAL ready'))
+    .catch((e) => console.warn('[Auth] MSAL init error:', e));
 });
 </script>
 
