@@ -2,20 +2,22 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 
-import LoginView from "../views/LoginView.vue";
-import RegisterView from "../views/RegisterView.vue";
-import InicioPage from "../page/inicio.vue";
-import AlumnosView from "../views/AlumnosViews.vue";
-import CarrerasView from "../views/carrerasView.vue";
-import CuentasView from "../views/CuentasView.vue";
-import MetodosPagoView from "../views/metodosPago.vue";
-import CiclosEscolares from "../views/CiclosEscolares.vue";
-import RolesView from "../views/RolesView.vue";
-import ObservacionesView from "../views/ObservacionesView.vue";
-import ConceptosView from "../views/ConceptosView.vue";
-import DashboardAlumnosView from "../views/DashboardAlumnosView.vue";
-import AdminUsuariosPermisosView from "../views/AdminUsuariosPermisosView.vue";
 import { PERMISSIONS } from "../security/permissions";
+
+const LoginView = () => import("../views/LoginView.vue");
+const RegisterView = () => import("../views/RegisterView.vue");
+const InicioPage = () => import("../page/inicio.vue");
+const AlumnosView = () => import("../views/AlumnosViews.vue");
+const CarrerasView = () => import("../views/carrerasView.vue");
+const CuentasView = () => import("../views/CuentasView.vue");
+const MetodosPagoView = () => import("../views/metodosPago.vue");
+const CiclosEscolares = () => import("../views/CiclosEscolares.vue");
+const RolesView = () => import("../views/RolesView.vue");
+const ObservacionesView = () => import("../views/ObservacionesView.vue");
+const ConceptosView = () => import("../views/ConceptosView.vue");
+const DashboardAlumnosView = () => import("../views/DashboardAlumnosView.vue");
+const AnaliticaView = () => import("../views/AnaliticaView.vue");
+const AdminUsuariosPermisosView = () => import("../views/AdminUsuariosPermisosView.vue");
 
 const routes = [
   { path: "/login", name: "Login", component: LoginView },
@@ -34,6 +36,11 @@ const routes = [
   {
     path: "/dashboard-alumnos",
     component: DashboardAlumnosView,
+    meta: { requiresAuth: true, permission: PERMISSIONS.VIEW_DASHBOARD_ALUMNOS, scopeByCareer: true },
+  },
+  {
+    path: "/analitica",
+    component: AnaliticaView,
     meta: { requiresAuth: true, permission: PERMISSIONS.VIEW_DASHBOARD_ALUMNOS, scopeByCareer: true },
   },
   { path: "/carreras", component: CarrerasView, meta: { requiresAuth: true, permission: PERMISSIONS.VIEW_CARRERAS } },

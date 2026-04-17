@@ -20,7 +20,7 @@ Aplicacion frontend para el Sistema Gestor de Control Financiero (SGCF), constru
 
 - Login local se mantiene con `username + password` contra `POST /auth/login`.
 - Registro local de usuario via `POST /auth/register` desde la vista `/registro`.
-- El registro envia `id_rol=6` (Sin Rol), `id_carrera=null` y `activo=false`; no puede iniciar sesion hasta activacion.
+- El registro envia `id_rol=6` (Sin Rol), `id_carrera=7` (Sin Plan) y `activo=false`; no puede iniciar sesion hasta activacion.
 - Google envía `id_token` a `POST /auth/google`.
 - Microsoft (MSAL SPA + PKCE por `loginPopup`) envía `id_token` a `POST /auth/microsoft`.
 - El frontend guarda unicamente el `token` entregado por backend y aplica guards por rol/estado.

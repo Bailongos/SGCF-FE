@@ -22,7 +22,7 @@
 
                 <div class="g-modal-footer-actions">
                   <slot name="footer-extra" />
-                  <GoogleButton v-if="showCancel" type="button" variant="text" color="#5f6368" @click="onCancel">
+                  <GoogleButton v-if="showCancel" type="button" variant="text" @click="onCancel">
                     {{ cancelTextToShow }}
                   </GoogleButton>
 
@@ -219,10 +219,11 @@ const onLeave = (el: any, done: () => void) => {
 </script>
 
 <style scoped>
+/* Converted to var for theme support */
 .g-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(32, 33, 36, 0.45);
+  background: var(--md-sys-color-scrim);
   backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
@@ -270,14 +271,14 @@ const onLeave = (el: any, done: () => void) => {
   width: 32px;
   height: 32px;
   font-size: 1.2rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   transition: background-color 0.15s ease, color 0.15s ease;
   z-index: 10;
 }
 
 .g-modal-close-btn:hover {
-  background-color: rgba(60, 64, 67, 0.08);
-  color: #202124;
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
 }
 
 
@@ -303,7 +304,7 @@ const onLeave = (el: any, done: () => void) => {
   align-items: center;
   gap: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .g-modal-footer-actions {
@@ -316,7 +317,7 @@ const onLeave = (el: any, done: () => void) => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   user-select: none;
 }
@@ -325,6 +326,6 @@ const onLeave = (el: any, done: () => void) => {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #1a73e8;
+  accent-color: var(--md-sys-color-primary);
 }
 </style>

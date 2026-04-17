@@ -1,111 +1,91 @@
 <!-- src/views/ObservacionesView.vue -->
 <template>
   <section class="page g-page-animate">
-    <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
       <RouterLink to="/inicio" custom v-slot="{ navigate }">
-        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+        <GoogleButton @click="navigate" variant="text" size="sm">
           <span class="material-symbols-outlined">arrow_back</span>
           Volver a inicio
         </GoogleButton>
       </RouterLink>
     </div>
 
-    <!-- Header estilo Google -->
     <header class="page-header">
-      <div>
+      <div class="header-content">
         <h2 class="page-title">Observaciones</h2>
-        <p class="page-subtitle">
-          Registro de observaciones por alumno y usuario.
-        </p>
+        <p class="page-subtitle">Registro de incidencias y notas por alumno.</p>
       </div>
 
       <div class="page-header-meta">
-        <span class="chip chip-soft">
-          Total: <strong>{{ observaciones.length }}</strong>
-        </span>
-
-        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
+        <GoogleChip variant="soft">Total: <strong>{{ observaciones.length }}</strong></GoogleChip>
+        <GoogleButton variant="filled" size="sm" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nueva observación
         </GoogleButton>
       </div>
     </header>
 
-    <!-- Tabla genérica googlesca -->
-    <GoogleTable :rows="tableRows" :columns="observacionesColumns" rowKey="id_observacion" :loading="loadingList"
-      :error="error" v-model:search="search" title="Listado de observaciones"
-      subtitle="Consulta, edita o elimina observaciones registradas." icon="speaker_notes" :showReload="true"
-      :useDefaultActions="true" :searchKeys="['matricula', 'alumno_nombre', 'autor_nombre', 'taller_label', 'detalle']"
-      :successMessage="tableSuccessMessage" emptyMessage="No hay observaciones que coincidan con el filtro."
-      @reload="loadObservaciones" @edit="onEdit" @delete="onDelete" />
+    <div class="filters-panel">
+      <div class="field">
+        <span class="field-label">Filtrar por matrícula</span>
+        <input v-model="filters.matricula" class="field-input" list="alumnos-list-obs" placeholder="Todas" @change="loadObservaciones" />
+        <datalist id="alumnos-list-obs">
+          <option v-for="al in alumnos" :key="al.matricula" :value="al.matricula">{{ al.matricula }} · {{ al.nombre_completo }}</option>
+        </datalist>
+      </div>
 
-    <!-- Modal Crear / Editar observación -->
-    <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit_note' : 'note_add'"
+      <div class="field">
+        <span class="field-label">Tipo</span>
+        <select v-model="filters.tipo" class="field-input" @change="loadObservaciones">
+          <option value="">Todos</option>
+          <option v-for="tipo in tipoOptions" :key="tipo.clave" :value="tipo.clave">{{ tipo.nombre }}</option>
+        </select>
+      </div>
+
+      <div class="filters-actions">
+        <GoogleButton variant="text" @click="resetFilters">Limpiar</GoogleButton>
+      </div>
+    </div>
+
+    <GoogleTable 
+      :rows="tableRows" 
+      :columns="columns" 
+      rowKey="id_observacion" 
+      :loading="loadingList"
+      :error="error" 
+      v-model:search="search" 
+      title="Bitácora de Observaciones"
+      subtitle="Consulta el historial de notas registradas." 
+      icon="speaker_notes" 
+      :showReload="true"
+      :useDefaultActions="true" 
+      :searchKeys="['matricula', 'alumno_nombre', 'autor_nombre', 'detalle']"
+      :successMessage="successMessage" 
+      @reload="loadObservaciones" 
+      @edit="onEdit" 
+      @delete="onDelete" 
+    />
+
+    <GoogleModal 
+      v-model="showFormModal" 
+      :icon="isEditing ? 'edit_note' : 'note_add'"
       :title="isEditing ? 'Editar observación' : 'Nueva observación'"
-      subtitle="Relaciona una observación con un alumno y, opcionalmente, con el usuario que la registra."
-      maxWidth="780px" density="comfortable" :confirmLoading="loadingSave"
-      :confirmText="isEditing ? 'Actualizar' : 'Guardar'" cancelText="Cancelar" @confirm="handleFormSubmit"
-      @cancel="handleCancelForm">
-      <form @submit.prevent="handleFormSubmit" class="obs-form">
-        <div class="obs-form-grid">
-          <!-- Matrícula / alumno -->
-          <div class="field">
-            <span class="field-label">Matrícula *</span>
-            <input v-model="form.matricula" list="alumnos-list" required class="field-input" placeholder="Ej. 180054" />
-            <datalist id="alumnos-list">
-              <option v-for="al in alumnos" :key="al.matricula" :value="al.matricula">
-                {{ al.matricula }} · {{ al.nombre_completo }}
-              </option>
-            </datalist>
-            <small v-if="!alumnos.length" class="hint">
-              No hay alumnos cargados.
-            </small>
-          </div>
-
-          <!-- Autor (texto + sugerencias) -->
-          <div class="field">
-            <span class="field-label">Autor</span>
-            <input v-model="form.autorTexto" list="usuarios-list" class="field-input"
-              placeholder="Escribe un usuario o texto libre..." />
-            <datalist id="usuarios-list">
-              <option v-for="u in usuarios" :key="u.id_usuario" :value="u.username">
-                {{ u.username }}
-              </option>
-            </datalist>
-            <small v-if="!usuarios.length" class="hint">
-              No hay usuarios cargados.
-            </small>
-            <small class="hint">
-              Si el texto coincide con un usuario, se vincula; si no, se guarda sin autor.
-            </small>
-          </div>
-
-          <!-- Fecha (solo lectura, viene del backend) -->
-          <div class="field">
-            <span class="field-label">Fecha (solo lectura)</span>
-            <input class="field-input field-input-readonly"
-              :value="form.fecha ? formatDate(form.fecha) : 'Se asigna automáticamente'" readonly />
-          </div>
-
-          <div class="field">
-            <span class="field-label">Taller / canalización *</span>
-            <select v-model="form.taller" required class="field-input">
-              <option v-for="option in TALLER_OPTIONS" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Detalle -->
-          <div class="field field-full">
-            <span class="field-label">Detalle *</span>
-            <textarea v-model="form.detalle" required class="field-input field-textarea" rows="3"
-              placeholder="Escribe aquí la observación..."></textarea>
-          </div>
-        </div>
-        <!-- Botones los maneja el footer del modal -->
-      </form>
+      maxWidth="700px" 
+      :confirmLoading="loadingSave"
+      :confirmText="isEditing ? 'Guardar' : 'Crear'" 
+      @confirm="handleFormSubmit"
+    >
+      <ObservacionForm 
+        v-if="form"
+        :form="form"
+        :tipoOptions="tipoOptions"
+        :alumnos="alumnos"
+        :usuarios="usuarios"
+        :allowSelectAlumno="!isEditing"
+        :currentUsername="getCurrentUsername()"
+        :error="formError"
+        @submit="handleFormSubmit"
+      />
     </GoogleModal>
   </section>
 </template>
@@ -118,425 +98,121 @@ import { useAuthStore } from '../stores/auth';
 import GoogleButton from '../components/ui/button.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
+import GoogleChip from '../components/ui/chip.vue';
+import ObservacionForm from '../components/dashboard/ObservacionForm.vue';
 
-import {
-  getObservaciones,
-  createObservacion,
-  updateObservacion,
-  deleteObservacion,
-  type Observacion,
-  type ObservacionPayload,
-} from '../services/observaciones';
+import { getObservaciones, getTiposObservacion, createObservacion, updateObservacion, deleteObservacion as deleteAPI, type Observacion } from '../services/observaciones';
+import { getAlumnos } from '../services/alumnos';
+import { getUsuarios } from '../services/usuarios';
 
-import { getAlumnos, type Alumno } from '../services/alumnos';
-import { getUsuarios, type Usuario } from '../services/usuarios';
-
+const auth = useAuthStore();
 const observaciones = ref<Observacion[]>([]);
-const alumnos = ref<Alumno[]>([]);
-const usuarios = ref<Usuario[]>([]);
+const alumnos = ref<any[]>([]);
+const usuarios = ref<any[]>([]);
+const tipos = ref<any[]>([]);
 
 const loadingList = ref(false);
 const loadingSave = ref(false);
 const error = ref<string | null>(null);
-
-const search = ref('');
-const isEditing = ref(false);
-
-// mensajes de éxito dentro de la tabla
-const tableSuccessMessage = ref<string | null>(null);
-
-// Modal formulario
+const formError = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
 const showFormModal = ref(false);
-const auth = useAuthStore();
+const isEditing = ref(false);
+const search = ref('');
+const filters = ref({ matricula: '', tipo: '' });
+const form = ref<any | null>(null);
 
-const TALLER_OPTIONS = [
-  { value: 'canalización académica', label: 'Canalización académica' },
-  { value: 'canalización psicológica', label: 'Canalización psicológica' },
-  { value: 'baja', label: 'Baja' },
-  { value: 'otro', label: 'Otro' },
-];
+const tipoOptions = computed(() => tipos.value.map(t => ({ clave: t.clave, nombre: t.nombre })));
+const tableRows = computed(() => observaciones.value.map(o => ({
+  ...o,
+  alumno_nombre: alumnos.value.find(al => al.matricula === o.matricula)?.nombre_completo || o.matricula,
+  autor_nombre: usuarios.value.find(u => u.id_usuario === o.id_autor)?.username || 'Sistema',
+  tipo_label: tipos.value.find(t => t.clave === o.tipo_clave)?.nombre || o.tipo_clave,
+  fecha_fmt: o.fecha ? String(o.fecha).slice(0, 10) : '-'
+})));
 
-function normalizeTaller(value: unknown): string {
-  const normalized = String(value ?? '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  if (normalized === 'canalizacion academica') return 'canalización académica';
-  if (normalized === 'canalizacion psicologica') return 'canalización psicológica';
-  if (normalized === 'baja') return 'baja';
-  if (normalized === 'otro') return 'otro';
-  return 'otro';
-}
-
-function getTallerLabel(value: unknown): string {
-  const normalized = normalizeTaller(value);
-  const found = TALLER_OPTIONS.find((option) => option.value === normalized);
-  return found?.label ?? 'Otro';
-}
-
-function getCurrentUserId(): number | null {
-  const parsed = Number(auth.user?.id_usuario ?? 0);
-  return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
-}
-
-function getCurrentUsername(): string {
-  return String(auth.user?.username ?? '').trim();
-}
-
-interface ObservacionForm {
-  id_observacion: number | null;
-  matricula: string;
-  detalle: string;
-  taller: string;
-  id_autor: number | null;
-  fecha: string | null;
-  autorTexto: string; // lo que escribe el usuario en el input de autor
-}
-
-const form = ref<ObservacionForm>({
-  id_observacion: null,
-  matricula: '',
-  detalle: '',
-  taller: 'otro',
-  id_autor: getCurrentUserId(),
-  fecha: null,
-  autorTexto: getCurrentUsername(),
-});
-
-function resetForm() {
-  form.value = {
-    id_observacion: null,
-    matricula: '',
-    detalle: '',
-    taller: 'otro',
-    id_autor: getCurrentUserId(),
-    fecha: null,
-    autorTexto: getCurrentUsername(),
-  };
-  isEditing.value = false;
-}
-
-// Helpers
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '-';
-  return iso.slice(0, 10);
-}
-
-function getAlumnoNombre(matricula: string): string {
-  const al = alumnos.value.find((a) => a.matricula === matricula);
-  return al ? al.nombre_completo : '';
-}
-
-function getAutorNombre(id_autor: number | null): string {
-  if (!id_autor) return '';
-  const u = usuarios.value.find((u) => u.id_usuario === id_autor);
-  return u ? u.username : `ID ${id_autor}`;
-}
-
-// Filas para la tabla (enriquecidas con nombres)
-const tableRows = computed(() =>
-  observaciones.value.map((o) => ({
-    ...o,
-    alumno_nombre: getAlumnoNombre(o.matricula),
-    autor_nombre: getAutorNombre(o.id_autor ?? null),
-    taller_label: getTallerLabel(o.taller),
-    fecha_corta: formatDate(o.fecha ?? null),
-  })),
-);
-
-// Columnas para GoogleTable
-const observacionesColumns: TableColumn[] = [
-  { key: 'id_observacion', label: '#', width: '70px', align: 'left' },
-  { key: 'matricula', label: 'Matrícula' },
+const columns: TableColumn[] = [
+  { key: 'matricula', label: 'Matrícula', width: '120px' },
   { key: 'alumno_nombre', label: 'Alumno' },
-  { key: 'autor_nombre', label: 'Autor' },
-  { key: 'taller_label', label: 'Taller' },
+  { key: 'autor_nombre', label: 'Autor', width: '140px' },
+  { key: 'tipo_label', label: 'Tipo', badge: true },
   { key: 'detalle', label: 'Detalle' },
-  { key: 'fecha_corta', label: 'Fecha', width: '110px' },
+  { key: 'fecha_fmt', label: 'Fecha', width: '110px' },
 ];
 
-// Loaders
-
-async function loadCatalogos() {
+async function loadData() {
   try {
-    const [al, us] = await Promise.all([getAlumnos(), getUsuarios()]);
-    alumnos.value = al;
-    usuarios.value = us;
-  } catch (e) {
-    console.error('Error al cargar catálogos para observaciones', e);
-  }
+    const [al, us, tp] = await Promise.all([getAlumnos(), getUsuarios(), getTiposObservacion()]);
+    alumnos.value = al; usuarios.value = us; tipos.value = tp;
+  } catch (e) { console.error(e); }
 }
 
 async function loadObservaciones() {
+  loadingList.value = true;
   try {
-    error.value = null;
-    loadingList.value = true;
-    observaciones.value = await getObservaciones();
-  } catch (e) {
-    console.error(e);
-    error.value = 'Error al cargar observaciones';
-  } finally {
-    loadingList.value = false;
-  }
+    observaciones.value = await getObservaciones({
+      matricula: filters.value.matricula || undefined,
+      tipo: filters.value.tipo || undefined
+    });
+  } catch (e) { error.value = 'No se pudieron cargar las observaciones.'; }
+  finally { loadingList.value = false; }
 }
 
-// Abre modal para nueva observación
+function resetFilters() { filters.value = { matricula: '', tipo: '' }; loadObservaciones(); }
+function getCurrentUsername() { return auth.user?.username || ''; }
+
 function openCreateForm() {
-  resetForm();
   isEditing.value = false;
+  form.value = { matricula: '', detalle: '', tipo_clave: 'GENERAL', autorTexto: getCurrentUsername() };
   showFormModal.value = true;
 }
 
-// CRUD
-
-async function saveObservacion() {
-  try {
-    error.value = null;
-    loadingSave.value = true;
-
-    // intentar matchear el texto con un usuario existente
-    const autorTexto = form.value.autorTexto.trim();
-    const currentUserId = getCurrentUserId();
-    const currentUsername = getCurrentUsername().toLowerCase();
-    let autorId: number | null = null;
-
-    if (autorTexto) {
-      const found = usuarios.value.find(
-        (u) => u.username.toLowerCase() === autorTexto.toLowerCase(),
-      );
-      if (found) {
-        autorId = found.id_usuario;
-      } else if (currentUserId && autorTexto.toLowerCase() === currentUsername) {
-        autorId = currentUserId;
-      }
-    } else {
-      autorId = currentUserId;
-    }
-
-    const payload: ObservacionPayload = {
-      matricula: form.value.matricula.trim(),
-      detalle: form.value.detalle.trim(),
-      taller: normalizeTaller(form.value.taller),
-      id_autor: autorId,
-    };
-
-    if (!payload.matricula || !payload.detalle) {
-      error.value = 'Matrícula y detalle son obligatorios.';
-      return;
-    }
-
-    if (isEditing.value && form.value.id_observacion != null) {
-      const updated = await updateObservacion(
-        form.value.id_observacion,
-        payload,
-      );
-      observaciones.value = observaciones.value.map((o) =>
-        o.id_observacion === updated.id_observacion ? updated : o,
-      );
-      tableSuccessMessage.value = 'Observación actualizada correctamente';
-    } else {
-      const created = await createObservacion(payload);
-      observaciones.value.push(created);
-      tableSuccessMessage.value = 'Observación creada correctamente';
-    }
-
-    resetForm();
-  } catch (e: any) {
-    console.error(e);
-    const backendMsg =
-      e?.response?.data?.message ?? e?.message ?? 'Error desconocido';
-    error.value = isEditing.value
-      ? `Error al actualizar la observación: ${backendMsg}`
-      : `Error al crear la observación: ${backendMsg}`;
-  } finally {
-    loadingSave.value = false;
-  }
-}
-
-// submit desde el modal (botón footer o Enter en el form)
-async function handleFormSubmit() {
-  await saveObservacion();
-  if (!error.value) {
-    showFormModal.value = false;
-  }
-}
-
-// cancelar desde el modal
-function handleCancelForm() {
-  resetForm();
-  showFormModal.value = false;
-}
-
-// Editar desde la tabla (GoogleTable @edit pasa la fila completa)
 function onEdit(row: Observacion) {
   isEditing.value = true;
-  const autorNombre = row.id_autor ? getAutorNombre(row.id_autor) : '';
-  form.value = {
-    id_observacion: row.id_observacion,
-    matricula: row.matricula,
-    detalle: row.detalle,
-    taller: normalizeTaller(row.taller),
-    id_autor: row.id_autor ?? null,
-    fecha: row.fecha ?? null,
-    autorTexto: autorNombre,
-  };
+  form.value = { ...row, autorTexto: usuarios.value.find(u => u.id_usuario === row.id_autor)?.username || '' };
   showFormModal.value = true;
 }
 
-// Eliminar desde la tabla
-async function onDelete(row: Observacion) {
-  const id_observacion = row.id_observacion;
-  if (!confirm(`¿Eliminar observación #${id_observacion}?`)) return;
+async function handleFormSubmit() {
+  if (!form.value.matricula || !form.value.detalle) { formError.value = 'Completa los campos obligatorios.'; return; }
+  loadingSave.value = true;
   try {
-    await deleteObservacion(id_observacion);
-    observaciones.value = observaciones.value.filter(
-      (o) => o.id_observacion !== id_observacion,
-    );
-    if (form.value.id_observacion === id_observacion) {
-      resetForm();
-    }
-    tableSuccessMessage.value = 'Observación eliminada correctamente';
-  } catch (e: any) {
-    console.error(e);
-    const backendMsg =
-      e?.response?.data?.message ?? e?.message ?? 'Error desconocido';
-    error.value = `Error al eliminar la observación: ${backendMsg}`;
-  }
+    if (isEditing.value) await updateObservacion(form.value.id_observacion, form.value);
+    else await createObservacion(form.value);
+    await loadObservaciones();
+    showFormModal.value = false;
+    successMessage.value = isEditing.value ? 'Actualizado correctamente.' : 'Creado correctamente.';
+  } catch (e) { formError.value = 'Error al guardar la observación.'; }
+  finally { loadingSave.value = false; }
 }
 
-onMounted(async () => {
-  await Promise.all([loadCatalogos(), loadObservaciones()]);
-});
+async function onDelete(row: Observacion) {
+  if (!confirm('¿Eliminar esta observación?')) return;
+  try {
+    await deleteAPI(row.id_observacion);
+    await loadObservaciones();
+    successMessage.value = 'Eliminado correctamente.';
+  } catch (e) { error.value = 'Error al eliminar.'; }
+}
+
+onMounted(async () => { await loadData(); await loadObservaciones(); });
 </script>
 
 <style scoped>
-/* Animación suave tipo Google */
-.g-page-animate {
-  animation: g-fade-in 180ms ease-out;
+.page { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-end; }
+.page-title { font-size: 1.75rem; font-weight: 700; color: var(--md-sys-color-on-surface); margin: 0; }
+.page-subtitle { color: var(--md-sys-color-on-surface-variant); margin-top: 0.25rem; }
+.page-header-meta { display: flex; gap: 1rem; align-items: center; }
+.filters-panel {
+  display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;
+  padding: 1rem; border-radius: 12px; background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
 }
-
-@keyframes g-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.field-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--md-sys-color-on-surface-variant); margin-bottom: 0.4rem; }
+.field-input { 
+  width: 100%; padding: 0.65rem; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface);
 }
-
-.back-to-home {
-  margin-bottom: 0.5rem;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.page-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #202124;
-}
-
-.page-subtitle {
-  font-size: 0.9rem;
-  color: #5f6368;
-  margin-top: 0.25rem;
-}
-
-.page-header-meta {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-/* Chips */
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.15rem 0.6rem;
-  font-size: 0.78rem;
-  border: 1px solid transparent;
-}
-
-.chip-soft {
-  background: #f1f3f4;
-  color: #5f6368;
-}
-
-.chip-primary {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
-  color: #1a73e8;
-}
-
-/* Formulario dentro del modal */
-
-.obs-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.obs-form-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-}
-
-.field-full {
-  grid-column: 1 / -1;
-}
-
-.field-label {
-  color: #5f6368;
-}
-
-.field-input {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  background-color: #ffffff;
-}
-
-.field-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
-}
-
-.field-input-readonly {
-  background: #f8f9fa;
-  color: #5f6368;
-}
-
-.field-textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.hint {
-  font-size: 0.75rem;
-  color: #a0a4a8;
-  margin-top: 0.15rem;
-}
+@media (max-width: 800px) { .filters-panel { grid-template-columns: 1fr; } }
 </style>

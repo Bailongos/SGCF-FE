@@ -18,7 +18,7 @@
                     <strong>{{ totalGeneranCuenta }}</strong>
                 </span>
 
-                <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
+                <GoogleButton size="sm" @click="openCreateForm">
                     <span class="material-symbols-outlined">add</span>
                     Nuevo concepto
                 </GoogleButton>
@@ -78,7 +78,7 @@
 
                     <div class="add-more-container">
                         <GoogleButton type="button" variant="text" size="sm" @click="addForm"
-                            style="margin-top: 0.5rem; color: #1a73e8;">
+                            style="margin-top: 0.5rem;">
                             <span class="material-symbols-outlined">add_circle</span>
                             Añadir otro concepto
                         </GoogleButton>
@@ -326,22 +326,34 @@ async function onDelete(row: Concepto) {
 }
 
 function animateEntrance() {
-    import('animejs').then(({ animate }) => {
-        animate('.g-table tbody tr', {
-            opacity: [0, 1],
-            translateX: [-12, 0],
-            delay: (_el: any, i: number) => i * 35,
-            duration: 650,
-            easing: 'easeOutQuart'
-        });
+    const tableRows = document.querySelectorAll('.g-table tbody tr');
+    const chips = document.querySelectorAll('.chip');
 
-        animate('.chip', {
-            scale: [0.8, 1],
-            opacity: [0, 1],
-            delay: (_el: any, i: number) => 150 + (i * 55),
-            duration: 550,
-            easing: 'easeOutElastic(1, .8)'
-        });
+    if (tableRows.length === 0 && chips.length === 0) return;
+
+    import('animejs').then((m: any) => {
+        const anime = m.default || m;
+        if (tableRows.length > 0) {
+            anime({
+                targets: '.g-table tbody tr',
+                opacity: [0, 1],
+                translateX: [-12, 0],
+                delay: (_el: any, i: number) => i * 35,
+                duration: 650,
+                easing: 'easeOutQuart'
+            });
+        }
+
+        if (chips.length > 0) {
+            anime({
+                targets: '.chip',
+                scale: [0.8, 1],
+                opacity: [0, 1],
+                delay: (_el: any, i: number) => 150 + (i * 55),
+                duration: 550,
+                easing: 'easeOutElastic(1, .8)'
+            });
+        }
     });
 }
 
@@ -384,12 +396,12 @@ onMounted(async () => {
 .page-title {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #202124;
+    color: var(--md-sys-color-on-surface);
 }
 
 .page-subtitle {
     font-size: 0.9rem;
-    color: #5f6368;
+    color: var(--md-sys-color-on-surface-variant);
     margin-top: 0.25rem;
 }
 
@@ -411,26 +423,26 @@ onMounted(async () => {
 }
 
 .chip-soft {
-    background: #f1f3f4;
-    color: #5f6368;
+    background: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface-variant);
 }
 
 .chip-primary {
-    background: #e8f0fe;
-    border-color: #d2e3fc;
-    color: #1a73e8;
+    background: var(--md-sys-color-primary-container);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-primary-container);
 }
 
 .chip-success {
-    background: #e6f4ea;
-    border-color: #c8e6c9;
-    color: #1e8e3e;
+    background: var(--md-sys-color-tertiary-container);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-tertiary-container);
 }
 
 .chip-muted {
-    background: #f1f3f4;
-    border-color: #e0e0e0;
-    color: #5f6368;
+    background: var(--md-sys-color-surface-container-high);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Formulario dentro del modal */
@@ -460,12 +472,12 @@ onMounted(async () => {
     gap: 0.4rem;
     margin-top: 0.25rem;
     font-size: 0.9rem;
-    color: #5f6368;
+    color: var(--md-sys-color-on-surface-variant);
 }
 
 .concepto-hint {
     font-size: 0.8rem;
-    color: #80868b;
+    color: var(--md-sys-color-outline);
     margin-top: 0.15rem;
 }
 
@@ -476,7 +488,7 @@ onMounted(async () => {
     gap: 0.5rem;
     margin-bottom: 1rem;
     padding-bottom: 1rem;
-    border-bottom: 1px dashed #dadce0;
+    border-bottom: 1px dashed var(--md-sys-color-outline-variant);
 }
 
 .concepto-form-row:last-of-type {

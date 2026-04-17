@@ -4,7 +4,7 @@
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
       <RouterLink to="/inicio" custom v-slot="{ navigate }">
-        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+        <GoogleButton @click="navigate" variant="text" size="sm">
           <span class="material-symbols-outlined">arrow_back</span>
           Volver a inicio
         </GoogleButton>
@@ -29,7 +29,7 @@
           <strong>{{ formatMoney(totalPendiente) }}</strong>
         </span>
 
-        <GoogleButton v-if="auth.can('action.cuenta.create')" size="sm" color="#1a73e8" @click="openCreateForm">
+        <GoogleButton v-if="auth.can('action.cuenta.create')" size="sm" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nueva cuenta
         </GoogleButton>
@@ -619,12 +619,12 @@ onMounted(async () => {
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .page-subtitle {
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.25rem;
 }
 
@@ -646,32 +646,32 @@ onMounted(async () => {
 }
 
 .chip-soft {
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .chip-primary {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
-  color: #1a73e8;
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-primary);
 }
 
 .chip-success {
-  background: #e6f4ea;
-  border-color: #c8e6c9;
-  color: #1e8e3e;
+  background: var(--md-sys-color-success-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-success);
 }
 
 .chip-warning {
-  background: #fef7e0;
-  border-color: #fbc02d;
-  color: #8d6e00;
+  background: var(--md-sys-color-warning-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-warning);
 }
 
 .chip-muted {
-  background: #f1f3f4;
-  border-color: #e0e0e0;
-  color: #5f6368;
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Formulario dentro del modal */
@@ -710,18 +710,18 @@ onMounted(async () => {
   gap: 0.4rem;
   margin-top: 0.25rem;
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .hint {
   font-size: 0.75rem;
-  color: #a0a4a8;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.1rem;
 }
 
 .cuenta-hint {
   font-size: 0.8rem;
-  color: #80868b;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.25rem;
 }
 </style>

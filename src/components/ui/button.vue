@@ -27,7 +27,7 @@
 import { computed } from 'vue';
 
 type Size = 'sm' | 'md' | 'lg';
-type Variant = 'filled' | 'text' | 'outlined';
+type Variant = 'filled' | 'text' | 'outlined' | 'tonal';
 type NativeButtonType = 'button' | 'submit' | 'reset';
 
 const props = defineProps<{
@@ -59,8 +59,8 @@ function handleClick(event: MouseEvent) {
 
 <style scoped>
 .g-btn {
-  --g-btn-bg: #1a73e8;
-  --g-btn-color: #1a73e8;
+  --g-btn-bg: var(--md-sys-color-primary);
+  --g-btn-color: var(--md-sys-color-primary);
 
   display: inline-flex;
   align-items: center;
@@ -73,7 +73,12 @@ function handleClick(event: MouseEvent) {
   min-width: 72px;
 
   background-color: var(--g-btn-bg);
-  color: #ffffff;
+  color: var(--md-sys-color-on-primary);
+
+  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  font-weight: 500;
+  font-size: 0.9rem;
 
   font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
@@ -85,7 +90,7 @@ function handleClick(event: MouseEvent) {
   outline: none;
 
   /* Animaciones googlescas */
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   transition:
     transform 0.08s ease-out,
     box-shadow 0.12s ease-out,
@@ -96,8 +101,8 @@ function handleClick(event: MouseEvent) {
 
 .g-btn--filled {
   background-color: var(--g-btn-bg);
-  color: #ffffff;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .g-btn--text {
@@ -107,10 +112,30 @@ function handleClick(event: MouseEvent) {
 }
 
 .g-btn--outlined {
-  background-color: #ffffff;
+  background-color: transparent;
   color: var(--g-btn-color);
-  border-color: rgba(95, 99, 104, 0.35);
+  border-color: var(--md-sys-color-outline-variant);
   box-shadow: none;
+}
+
+.g-btn--tonal {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
+}
+
+.g-btn--tonal:hover:not(.g-btn--disabled) {
+  filter: brightness(0.95);
+}
+
+.g-btn--tonal {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
+}
+
+.g-btn--tonal:hover:not(.g-btn--disabled) {
+  background-color: color-mix(in srgb, var(--md-sys-color-secondary-container), black 5%);
 }
 
 /* Tamaños */
@@ -137,14 +162,14 @@ function handleClick(event: MouseEvent) {
 
 .g-btn--text:hover:not(.g-btn--disabled) {
   filter: none;
-  background-color: rgba(26, 115, 232, 0.08);
+  background-color: color-mix(in srgb, var(--g-btn-color), transparent 92%);
   box-shadow: none;
 }
 
 .g-btn--outlined:hover:not(.g-btn--disabled) {
   filter: none;
-  background-color: rgba(26, 115, 232, 0.08);
-  border-color: rgba(26, 115, 232, 0.45);
+  background-color: color-mix(in srgb, var(--g-btn-color), transparent 92%);
+  border-color: var(--g-btn-color);
   box-shadow: none;
 }
 

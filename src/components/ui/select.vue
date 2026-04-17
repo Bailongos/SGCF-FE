@@ -112,7 +112,7 @@ const emit = defineEmits<{
 }>();
 
 const size = computed<Size>(() => props.size ?? 'md');
-const color = computed(() => props.color ?? '#1a73e8');
+const color = computed(() => props.color ?? 'var(--md-sys-color-primary)');
 const disabled = computed(() => props.disabled ?? false);
 const error = computed(() => props.errorMessage ?? null);
 const attrs = useAttrs();
@@ -133,7 +133,7 @@ const isOpen = ref(false);
 const search = ref('');
 const highlightedIndex = ref<number>(-1);
 
-// Posición dinámica del dropdown
+// Posicion dinamica del dropdown
 const dropdownStyle = ref<{ top: string; left: string; width: string }>({
   top: '0',
   left: '0',
@@ -150,8 +150,6 @@ watch(
   () => [props.modelValue, props.options],
   ([model]) => {
     if (!isOpen.value) {
-      // 🔹 Si no hay valor (null / undefined / ''), dejamos el input vacío
-      //    y se ve el placeholder "Selecciona..."
       if (model === null || model === undefined || model === '') {
         search.value = '';
       } else {
@@ -174,13 +172,23 @@ const filteredOptions = computed(() => {
 // Calcular posición del dropdown
 function updateDropdownPosition() {
   if (!containerRef.value) return;
-  
+
   const rect = containerRef.value.getBoundingClientRect();
   dropdownStyle.value = {
-    top: `${rect.bottom + window.scrollY + 2}px`,
-    left: `${rect.left + window.scrollX}px`,
+    top: `${rect.bottom + 2}px`,
+    left: `${rect.left}px`,
     width: `${rect.width}px`,
   };
+}
+
+function addDropdownListeners() {
+  window.addEventListener('resize', updateDropdownPosition);
+  window.addEventListener('scroll', updateDropdownPosition, true);
+}
+
+function removeDropdownListeners() {
+  window.removeEventListener('resize', updateDropdownPosition);
+  window.removeEventListener('scroll', updateDropdownPosition, true);
 }
 
 // Abrir/cerrar
@@ -198,19 +206,15 @@ function open() {
   // Calcular posición después de que se abre
   nextTick(() => {
     updateDropdownPosition();
-    window.addEventListener('scroll', updateDropdownPosition);
-    window.addEventListener('resize', updateDropdownPosition);
+    addDropdownListeners();
   });
 }
 
 function close() {
   isOpen.value = false;
   highlightedIndex.value = -1;
-  window.removeEventListener('scroll', updateDropdownPosition);
-  window.removeEventListener('resize', updateDropdownPosition);
+  removeDropdownListeners();
 
-  // Al cerrar, si hay valor, mostramos su etiqueta;
-  // si NO hay valor, dejamos el input vacío → placeholder visible
   if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') {
     search.value = '';
   } else {
@@ -275,7 +279,6 @@ function onFocus() {
 }
 
 function onBlur() {
-  // Pequeño delay por si se hace click en la lista
   setTimeout(() => {
     if (!wrapperRef.value) {
       close();
@@ -305,8 +308,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
-  window.removeEventListener('scroll', updateDropdownPosition);
-  window.removeEventListener('resize', updateDropdownPosition);
+  removeDropdownListeners();
 });
 </script>
 
@@ -322,13 +324,13 @@ onBeforeUnmount(() => {
 
 .g-select-label {
   font-size: 0.8rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-select-container {
   border-radius: 8px;
-  border: 1px solid #dadce0;
-  background-color: #ffffff;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface);
   display: flex;
   align-items: center;
   padding-right: 0.6rem;
@@ -347,11 +349,11 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-select-input::placeholder {
-  color: #9aa0a6;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Tamaños */
@@ -372,8 +374,8 @@ onBeforeUnmount(() => {
 
 /* Focus */
 .g-select-container:focus-within {
-  border-color: var(--g-select-focus, #1a73e8);
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
+  border-color: var(--g-select-focus, var(--md-sys-color-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-sys-color-primary), transparent 85%);
 }
 
 /* Icono */
@@ -384,7 +386,7 @@ onBeforeUnmount(() => {
     'GRAD' 0,
     'opsz' 24;
   font-size: 20px;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   transition: transform 0.15s ease;
 }
 
@@ -392,14 +394,15 @@ onBeforeUnmount(() => {
   transform: rotate(180deg);
 }
 
-/* Lista TELEPORTADA con posición fixed */
+/* Lista teleportada con posicion fixed */
 .g-select-list {
   position: fixed;
   z-index: 9999;
   padding: 0.25rem 0;
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(60, 64, 67, 0.3), 0 2px 4px rgba(60, 64, 67, 0.15);
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   max-height: 220px;
   overflow-y: auto;
   list-style: none;
@@ -408,23 +411,24 @@ onBeforeUnmount(() => {
 .g-select-option {
   padding: 0.35rem 0.8rem;
   font-size: 0.9rem;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
 }
 
 .g-select-option:hover {
-  background-color: #f1f3f4;
+  background-color: var(--md-sys-color-surface-container-high);
 }
 
 .g-select-option--selected {
   font-weight: 500;
-  background-color: #e8f0fe;
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-primary);
 }
 
 .g-select-option--highlighted {
-  background-color: #e8f0fe;
+  background-color: var(--md-sys-color-surface-container-highest);
 }
 
 /* Fade hacia abajo */
@@ -441,7 +445,8 @@ onBeforeUnmount(() => {
 
 /* Disabled */
 .g-select--disabled .g-select-container {
-  background-color: #f1f3f4;
+  background-color: var(--md-sys-color-surface-variant);
+  opacity: 0.6;
   cursor: default;
 }
 
@@ -451,6 +456,6 @@ onBeforeUnmount(() => {
 
 .g-select-error {
   font-size: 0.75rem;
-  color: #d93025;
+  color: var(--md-sys-color-error);
 }
 </style>

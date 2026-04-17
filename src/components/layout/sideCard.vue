@@ -81,9 +81,9 @@ function handleClick() {
   display: flex;
   flex-direction: column;
   border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.15);
-  border: 1px solid rgba(218, 220, 224, 0.6);
+  background: var(--md-sys-color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--md-sys-color-outline-variant);
   font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', sans-serif;
   animation: g-section-card-enter 0.24s ease-out;
@@ -117,10 +117,10 @@ function handleClick() {
 }
 
 .g-section-card--clickable:hover {
-  box-shadow: 0 3px 10px rgba(60, 64, 67, 0.28);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
   transform: translateY(-1px);
-  background-color: #f8f9fa;
-  border-color: rgba(210, 227, 252, 0.9);
+  background-color: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-primary);
 }
 
 /* Header */
@@ -145,8 +145,8 @@ function handleClick() {
     'GRAD' 0,
     'opsz' 24;
   font-size: 24px;
-  color: #1a73e8;
-  background: #e8f0fe;
+  color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
   border-radius: 12px;
   padding: 0.35rem;
   display: inline-flex;
@@ -158,13 +158,13 @@ function handleClick() {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 500;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-section-card__subtitle {
   margin: 0.15rem 0 0;
   font-size: 0.86rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-section-card__header-extra {
@@ -184,7 +184,7 @@ function handleClick() {
 .g-section-card__footer {
   margin-top: 0.9rem;
   padding-top: 0.6rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;

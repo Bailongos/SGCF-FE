@@ -4,7 +4,7 @@
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
       <RouterLink to="/inicio" custom v-slot="{ navigate }">
-        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+        <GoogleButton @click="navigate" size="sm">
           <span class="material-symbols-outlined">arrow_back</span>
           Volver a inicio
         </GoogleButton>
@@ -21,14 +21,10 @@
       </div>
 
       <div class="page-header-meta">
-        <span class="chip chip-soft">
-          Usuarios: <strong>{{ usuarios.length }}</strong>
-        </span>
-        <span class="chip chip-soft">
-          Activos: <strong>{{ usuariosActivos }}</strong>
-        </span>
+        <GoogleChip variant="soft">Total: <strong>{{ usuarios.length }}</strong></GoogleChip>
+        <GoogleChip variant="soft">Activos: <strong>{{ usuariosActivos }}</strong></GoogleChip>
 
-        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
+        <GoogleButton size="sm" @click="openCreateForm">
           <span class="material-symbols-outlined">person_add</span>
           Nuevo usuario
         </GoogleButton>
@@ -90,6 +86,7 @@ import GoogleInput from '../components/ui/input.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
 import GoogleSelect, { type SelectOption } from '../components/ui/select.vue';
+import GoogleChip from '../components/ui/chip.vue';
 
 import {
   getUsuarios,
@@ -102,6 +99,7 @@ import {
 
 import { getCarreras, type Carrera } from '../services/carreras';
 import { getRoles, type Rol } from '../services/roles';
+import { formatCarreraLabel } from '../utils/carreras';
 
 const usuarios = ref<Usuario[]>([]);
 const carreras = ref<Carrera[]>([]);
@@ -146,7 +144,7 @@ const carreraOptions = computed<SelectOption[]>(() => {
     { value: null as any, label: 'Global / Administración' }
   ];
   carreras.value.forEach(c => {
-    options.push({ value: c.id_carrera, label: c.nombre });
+    options.push({ value: c.id_carrera, label: formatCarreraLabel(c) });
   });
   return options;
 });
@@ -198,7 +196,7 @@ function getRolNombre(id_rol: number): string {
 function getCarreraNombre(id: number | null): string {
   if (id === null) return 'Global';
   const c = carreras.value.find((c) => c.id_carrera === id);
-  return c ? c.nombre : '-';
+  return c ? formatCarreraLabel(c) : '-';
 }
 
 const usuariosActivos = computed(
@@ -269,7 +267,12 @@ async function saveUsuario() {
 
     // Validación según rol
     const selectedRol = roles.value.find(r => r.id_rol === form.value.id_rol);
-    if (selectedRol?.nombre_rol === 'Coordinador' && form.value.id_carrera === null) {
+    const hasCareerAssigned =
+      form.value.id_carrera !== null &&
+      form.value.id_carrera !== undefined &&
+      String(form.value.id_carrera).trim() !== '';
+
+    if (selectedRol?.nombre_rol === 'Coordinador' && !hasCareerAssigned) {
       error.value = 'Coordinadores deben tener una carrera asignada.';
       return;
     }
@@ -355,7 +358,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Estilos similares a la versión anterior */
 .g-page-animate {
   animation: g-fade-in 180ms ease-out;
 }
@@ -385,12 +387,12 @@ onMounted(async () => {
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .page-subtitle {
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.25rem;
 }
 
@@ -410,8 +412,8 @@ onMounted(async () => {
 }
 
 .chip-soft {
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .user-form {
@@ -440,7 +442,7 @@ onMounted(async () => {
 }
 
 .field-label {
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   font-weight: 500;
 }
 
@@ -454,7 +456,7 @@ onMounted(async () => {
 
 .hint {
   font-size: 0.75rem;
-  color: #a0a4a8;
+  color: var(--md-sys-color-outline);
   margin-top: 0.15rem;
 }
 </style>

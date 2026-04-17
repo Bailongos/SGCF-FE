@@ -2,6 +2,11 @@
   <div class="register-container">
     <div class="register-card g-page-animate">
       <div class="register-header">
+        <div class="header-logos">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/9/9b/UAdeC_logo.png" alt="UAdeC" class="header-logo uadec-logo" />
+          <div class="logo-divider"></div>
+          <img src="https://sistemas.uadec.mx/images/logo_sistemas.png" alt="Escuela de Sistemas" class="header-logo sistemas-logo" />
+        </div>
         <h1 class="header-title">Registro de usuario</h1>
         <p class="header-subtitle">
           Crea tu cuenta local. Quedara en estado pendiente hasta activacion por Administrador Global.
@@ -15,6 +20,13 @@
           placeholder="Ej: juan.perez"
           required
           autofocus
+        />
+
+        <GoogleInput
+          v-model="form.email"
+          label="Email"
+          type="email"
+          placeholder="usuario@dominio.com"
         />
 
         <GoogleInput
@@ -43,7 +55,7 @@
           <span>{{ success }}</span>
         </div>
 
-        <GoogleButton type="submit" class="register-submit-btn" :loading="loading" color="#1a73e8">
+        <GoogleButton type="submit" class="register-submit-btn" :loading="loading">
           Registrar usuario
         </GoogleButton>
       </form>
@@ -70,15 +82,18 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const success = ref<string | null>(null);
 const defaultPendingRoleId = 6;
+const defaultCareerId = 7;
 
 const form = reactive({
   username: '',
+  email: '',
   password: '',
   confirmPassword: '',
 });
 
 function resetForm() {
   form.username = '';
+  form.email = '';
   form.password = '';
   form.confirmPassword = '';
 }
@@ -87,6 +102,7 @@ function validateForm(): boolean {
   error.value = null;
 
   const username = form.username.trim();
+  const email = form.email.trim();
   const password = form.password;
   const confirmPassword = form.confirmPassword;
 
@@ -105,13 +121,33 @@ function validateForm(): boolean {
     return false;
   }
 
+  if (email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      error.value = 'El email no tiene un formato valido.';
+      return false;
+    }
+  }
+
   return true;
 }
 
 function parseError(err: unknown): string {
   const responseData = (err as any)?.response?.data;
   const responseMessage = responseData?.message;
-  if (responseMessage) return String(responseMessage);
+  if (responseMessage) {
+    const message = String(responseMessage);
+    const normalized = message
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    if (normalized.includes('rol pendiente faltante')) {
+      return 'El backend no tiene configurado el rol Pendiente. Pide al administrador crear ese rol (idealmente id_rol=6) y volver a intentar.';
+    }
+
+    return message;
+  }
 
   const firstValidationError = Array.isArray(responseData?.errors)
     ? responseData.errors[0]
@@ -138,8 +174,9 @@ async function handleRegister() {
     const response = await register({
       username: form.username.trim(),
       password: form.password,
+      email: form.email.trim() || null,
       id_rol: defaultPendingRoleId,
-      id_carrera: null,
+      id_carrera: defaultCareerId,
       activo: false,
     });
 
@@ -164,36 +201,66 @@ async function handleRegister() {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at top left, #e8f0fe 0%, transparent 35%),
-    radial-gradient(circle at bottom right, #e6f4ea 0%, transparent 40%),
-    #f8f9fa;
+    radial-gradient(circle at top left, var(--md-sys-color-primary-container) 0%, transparent 35%),
+    radial-gradient(circle at bottom right, var(--md-sys-color-tertiary-container) 0%, transparent 40%),
+    var(--md-sys-color-background);
   padding: 1.5rem;
 }
 
 .register-card {
   width: 100%;
   max-width: 460px;
-  background: #fff;
-  border: 1px solid #e8eaed;
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 22px;
   padding: 2rem;
-  box-shadow: 0 14px 35px rgba(32, 33, 36, 0.12);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12);
 }
 
 .register-header {
-  margin-bottom: 1.3rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.header-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+  padding: 0.4rem;
+}
+
+.header-logo {
+  height: 50px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.header-logo:hover {
+  transform: scale(1.05);
+}
+
+.logo-divider {
+  width: 1px;
+  height: 30px;
+  background-color: var(--md-sys-color-outline-variant);
+  opacity: 0.5;
 }
 
 .header-title {
   margin: 0;
-  font-size: 1.55rem;
-  color: #1a73e8;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+  letter-spacing: -0.01em;
 }
 
 .header-subtitle {
   margin: 0.45rem 0 0;
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   line-height: 1.45;
 }
 
@@ -219,15 +286,15 @@ async function handleRegister() {
 }
 
 .error-box {
-  color: #b3261e;
-  background: #fdeceb;
-  border: 1px solid #f6c8c4;
+  color: var(--md-sys-color-on-error-container);
+  background: var(--md-sys-color-error-container);
+  border: 1px solid var(--md-sys-color-error);
 }
 
 .success-box {
-  color: #137333;
-  background: #e6f4ea;
-  border: 1px solid #b7dfc7;
+  color: var(--md-sys-color-on-tertiary-container);
+  background: var(--md-sys-color-tertiary-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .register-footer-actions {

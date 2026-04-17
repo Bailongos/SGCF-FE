@@ -14,7 +14,7 @@
           Total: <strong>{{ carreras.length }}</strong>
         </span>
 
-        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
+        <GoogleButton size="sm" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nueva carrera
         </GoogleButton>
@@ -23,17 +23,18 @@
 
     <GoogleTable :rows="carreras" :columns="carreraColumns" rowKey="id_carrera" :loading="loadingList" :error="error"
       v-model:search="search" title="Listado de Planes de Estudio" subtitle="Consulta y gestiona los planes actuales."
-      icon="school" :showReload="true" :useDefaultActions="true" :searchKeys="['nombre']"
+      icon="school" :showReload="true" :useDefaultActions="true" :searchKeys="['clave', 'nombre']"
       :successMessage="tableSuccessMessage" @reload="loadCarreras" @edit="onEdit" @delete="onDelete" />
 
     <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit' : 'school'"
-      :title="isEditing ? 'Editar Plan' : 'Nuevo Plan'" subtitle="Define el nombre y la duración oficial del plan."
+      :title="isEditing ? 'Editar Plan' : 'Nuevo Plan'" subtitle="Define clave, nombre y duración oficial del plan."
       maxWidth="600px" density="comfortable" :confirmLoading="loadingSave"
       :confirmText="isEditing ? 'Actualizar' : 'Guardar'" cancelText="Cancelar" @confirm="handleFormSubmit"
       @cancel="handleCancelForm">
       <form @submit.prevent="handleFormSubmit" class="carrera-form">
         <template v-if="isEditing">
           <div class="carrera-form-grid">
+            <GoogleInput v-model.trim="form.clave" label="Clave *" placeholder="Ej. IS-MTY" required />
             <GoogleInput v-model="form.nombre" label="Nombre del Plan *" placeholder="Ej. Ingeniería en Sistemas"
               required />
             <GoogleInput v-model="form.duracion_semestres" label="Duración (semestres) *" type="number" min="1"
@@ -44,6 +45,7 @@
         <template v-else>
           <div v-for="(item, index) in formsList" :key="index" class="carrera-form-row">
             <div class="carrera-form-grid">
+              <GoogleInput v-model.trim="item.clave" :label="`Clave ${index + 1} *`" placeholder="Ej. IS-MTY" required />
               <GoogleInput v-model="item.nombre" :label="`Nombre del Plan ${index + 1} *`"
                 placeholder="Ej. Ingeniería en Sistemas" required />
               <GoogleInput v-model="item.duracion_semestres" label="Duración *" type="number" min="1" required />
@@ -56,12 +58,16 @@
 
           <div class="add-more-container">
             <GoogleButton type="button" variant="text" size="sm" @click="addForm"
-              style="margin-top: 0.5rem; color: #1a73e8;">
+              style="margin-top: 0.5rem;">
               <span class="material-symbols-outlined">add_circle</span>
               Añadir otra carrera
             </GoogleButton>
           </div>
         </template>
+
+        <p class="carrera-hint">
+          La clave debe ser única y usar solo letras, números y guion medio.
+        </p>
       </form>
     </GoogleModal>
   </section>
@@ -83,6 +89,7 @@ import {
   type Carrera,
   type CarreraCreate,
 } from '../../services/carreras';
+import { isValidCarreraClave, normalizeCarreraClave } from '../../utils/carreras';
 
 const emit = defineEmits(['update']);
 
@@ -100,16 +107,17 @@ const tableSuccessMessage = ref<string | null>(null);
 const showFormModal = ref(false);
 
 const form = ref<CarreraCreate>({
+  clave: '',
   nombre: '',
   duracion_semestres: 9,
 });
 
 const formsList = ref<CarreraCreate[]>([
-  { nombre: '', duracion_semestres: 9 }
+  { clave: '', nombre: '', duracion_semestres: 9 }
 ]);
 
 function addForm() {
-  formsList.value.push({ nombre: '', duracion_semestres: 9 });
+  formsList.value.push({ clave: '', nombre: '', duracion_semestres: 9 });
 }
 
 function removeForm(index: number) {
@@ -118,6 +126,7 @@ function removeForm(index: number) {
 
 const carreraColumns: TableColumn[] = [
   { key: 'id_carrera', label: 'ID', width: '80px', align: 'left' },
+  { key: 'clave', label: 'Clave', width: '120px' },
   { key: 'nombre', label: 'Nombre del Plan' },
   {
     key: 'duracion_semestres',
@@ -129,15 +138,38 @@ const carreraColumns: TableColumn[] = [
 
 const resetForm = () => {
   form.value = {
+    clave: '',
     nombre: '',
     duracion_semestres: 9,
   };
   formsList.value = [
-    { nombre: '', duracion_semestres: 9 }
+    { clave: '', nombre: '', duracion_semestres: 9 }
   ];
   isEditing.value = false;
   editingId.value = null;
 };
+
+function buildPayload(source: Partial<CarreraCreate>, rowLabel = 'La carrera'): CarreraCreate | null {
+  const clave = normalizeCarreraClave(String(source.clave ?? ''));
+  const nombre = String(source.nombre ?? '').trim();
+  const duracion_semestres = Number(source.duracion_semestres) || 1;
+
+  if (!clave || !nombre) {
+    error.value = `${rowLabel} requiere clave y nombre.`;
+    return null;
+  }
+
+  if (!isValidCarreraClave(clave)) {
+    error.value = `${rowLabel} tiene una clave inválida. Usa solo letras, números y guion medio.`;
+    return null;
+  }
+
+  return {
+    clave,
+    nombre,
+    duracion_semestres,
+  };
+}
 
 async function loadCarreras() {
   try {
@@ -164,27 +196,66 @@ async function saveCarrera() {
     loadingSave.value = true;
 
     if (isEditing.value && editingId.value !== null) {
-      const payload: CarreraCreate = {
-        nombre: form.value.nombre.trim(),
-        duracion_semestres: Number(form.value.duracion_semestres) || 1,
-      };
+      const payload = buildPayload(form.value, 'La carrera');
+      if (!payload) return;
+
+      const hasDuplicateClave = carreras.value.some(
+        (c) => c.id_carrera !== editingId.value && normalizeCarreraClave(c.clave) === payload.clave,
+      );
+
+      if (hasDuplicateClave) {
+        error.value = `La clave ${payload.clave} ya existe en otra carrera.`;
+        return;
+      }
+
       const updated = await updateCarrera(editingId.value, payload);
       carreras.value = carreras.value.map((c) =>
         c.id_carrera === editingId.value ? updated : c,
       );
       tableSuccessMessage.value = 'Carrera actualizada correctamente';
     } else {
-      // Guardar múltiples carreras
-      const newCarreras = [];
-      for (const item of formsList.value) {
-        if (!item.nombre.trim()) continue;
-        const payload: CarreraCreate = {
-          nombre: item.nombre.trim(),
-          duracion_semestres: Number(item.duracion_semestres) || 1,
-        };
+      const filledRows = formsList.value.filter(
+        (item) => item.clave.trim() || item.nombre.trim(),
+      );
+
+      if (!filledRows.length) {
+        error.value = 'Debes capturar al menos una carrera con clave y nombre.';
+        return;
+      }
+
+      const payloads: CarreraCreate[] = [];
+      const seenClaves = new Set<string>();
+      const existingClaves = new Set(
+        carreras.value.map((c) => normalizeCarreraClave(c.clave)).filter(Boolean),
+      );
+
+      for (let index = 0; index < filledRows.length; index += 1) {
+        const item = filledRows[index];
+        if (!item) continue;
+
+        const payload = buildPayload(item, `La carrera ${index + 1}`);
+        if (!payload) return;
+
+        if (seenClaves.has(payload.clave)) {
+          error.value = `La clave ${payload.clave} está repetida en el formulario.`;
+          return;
+        }
+
+        if (existingClaves.has(payload.clave)) {
+          error.value = `La clave ${payload.clave} ya existe en el catálogo.`;
+          return;
+        }
+
+        seenClaves.add(payload.clave);
+        payloads.push(payload);
+      }
+
+      const newCarreras: Carrera[] = [];
+      for (const payload of payloads) {
         const created = await createCarrera(payload);
         newCarreras.push(created);
       }
+
       carreras.value.push(...newCarreras);
       tableSuccessMessage.value = `${newCarreras.length} carrera(s) creada(s) correctamente`;
     }
@@ -218,6 +289,7 @@ function onEdit(carrera: Carrera) {
   editingId.value = carrera.id_carrera;
 
   form.value = {
+    clave: carrera.clave,
     nombre: carrera.nombre,
     duracion_semestres: carrera.duracion_semestres,
   };
@@ -244,22 +316,34 @@ async function onDelete(row: Carrera) {
 }
 
 function animateEntrance() {
-  import('animejs').then(({ animate }) => {
-    animate('.g-table tbody tr', {
-      opacity: [0, 1],
-      translateX: [-12, 0],
-      delay: (_el: any, i: number) => i * 40,
-      duration: 700,
-      easing: 'easeOutQuart'
-    });
+  const tableRows = document.querySelectorAll('.g-table tbody tr');
+  const chips = document.querySelectorAll('.chip');
 
-    animate('.chip', {
-      scale: [0.8, 1],
-      opacity: [0, 1],
-      delay: (_el: any, i: number) => 200 + (i * 60),
-      duration: 600,
-      easing: 'easeOutElastic(1, .8)'
-    });
+  if (tableRows.length === 0 && chips.length === 0) return;
+
+  import('animejs').then((m: any) => {
+    const anime = m.default || m;
+    if (tableRows.length > 0) {
+      anime({
+        targets: '.g-table tbody tr',
+        opacity: [0, 1],
+        translateX: [-12, 0],
+        delay: (_el: any, i: number) => i * 40,
+        duration: 700,
+        easing: 'easeOutQuart'
+      });
+    }
+
+    if (chips.length > 0) {
+      anime({
+        targets: '.chip',
+        scale: [0.8, 1],
+        opacity: [0, 1],
+        delay: (_el: any, i: number) => 200 + (i * 60),
+        duration: 600,
+        easing: 'easeOutElastic(1, .8)'
+      });
+    }
   });
 }
 
@@ -303,12 +387,12 @@ onMounted(() => {
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .page-subtitle {
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.25rem;
 }
 
@@ -330,14 +414,14 @@ onMounted(() => {
 }
 
 .chip-soft {
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .chip-primary {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
-  color: #1a73e8;
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 /* Formulario dentro del modal */
@@ -366,7 +450,7 @@ onMounted(() => {
   gap: 0.5rem;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px dashed #dadce0;
+  border-bottom: 1px dashed var(--md-sys-color-outline-variant);
 }
 
 .carrera-form-row:last-of-type {
@@ -388,5 +472,11 @@ onMounted(() => {
   display: flex;
   justify-content: flex-start;
   margin-top: 0.5rem;
+}
+
+.carrera-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--md-sys-color-on-surface-variant);
 }
 </style>

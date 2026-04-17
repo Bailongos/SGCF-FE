@@ -8,6 +8,7 @@ import {
   type LoginResponse,
 } from '../services/auth';
 import { getRolePermissionSet, type PermissionKey } from '../security/permissions';
+import { logoutMsal } from '../services/msal';
 
 interface AuthUser {
   id_usuario: number;
@@ -106,7 +107,7 @@ function roleNameById(idRol: number | string | null | undefined): string {
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null);
   const token = ref<string | null>(localStorage.getItem('token'));
-  const isAuthenticated = computed(() => !!token.value);
+  const isAuthenticated = computed(() => Boolean(token.value && user.value));
 
   const currentRole = computed(() => {
     const byId = roleNameById(readRoleId(user.value));
@@ -129,6 +130,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isCashier = computed(() => currentRole.value === 'caja');
 
   const userStatus = computed(() => {
+    if (!user.value) return 'inactivo';
+
     const status = readStatus(user.value);
 
     if (status.includes('pend')) return 'pendiente';
@@ -146,6 +149,7 @@ export const useAuthStore = defineStore('auth', () => {
   const permissionSet = computed(() => getRolePermissionSet(currentRole.value));
 
   function can(permission: PermissionKey | string | null | undefined): boolean {
+    if (!isAuthenticated.value) return false;
     if (!isUserActive.value) return false;
     if (!permission) return true;
     return permissionSet.value.has('*') || permissionSet.value.has(String(permission));
@@ -157,11 +161,19 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function hasAnyRole(roles: string[] | null | undefined): boolean {
+    if (!isAuthenticated.value) return false;
     if (!isUserActive.value) return false;
     if (!roles?.length) return true;
 
     const allowed = roles.map((role) => normalizeRoleName(role));
     return allowed.includes(currentRole.value);
+  }
+
+  function clearSession() {
+    token.value = null;
+    user.value = null;
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }
 
   function setSession(data: LoginResponse) {
@@ -193,32 +205,38 @@ export const useAuthStore = defineStore('auth', () => {
     setSession(data);
   }
 
+
   function logout() {
-    token.value = null;
-    user.value = null;
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    void logoutMsal().catch((error) => {
+      console.warn('[Auth] No se pudo cerrar sesion de Microsoft.', error);
+    });
+
+    clearSession();
   }
 
   function initialize() {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser) as unknown;
-        const candidate = (parsed as any)?.user ?? parsed;
-        if (candidate && typeof candidate === 'object') {
-          user.value = candidate as AuthUser;
-        } else {
-          user.value = null;
-          localStorage.removeItem('user');
-        }
-      } catch {
-        user.value = null;
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-      }
+    const savedToken = localStorage.getItem('token');
+
+    if (!savedUser || !savedToken) {
+      clearSession();
+      return;
     }
-    token.value = localStorage.getItem('token');
+
+    try {
+      const parsed = JSON.parse(savedUser) as unknown;
+      const candidate = (parsed as any)?.user ?? parsed;
+
+      if (candidate && typeof candidate === 'object') {
+        user.value = candidate as AuthUser;
+        token.value = savedToken;
+        return;
+      }
+    } catch {
+      // Any parse error invalidates the local session.
+    }
+
+    clearSession();
   }
 
   return {

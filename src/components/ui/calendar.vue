@@ -450,14 +450,14 @@ onBeforeUnmount(() => {
 /* Label */
 .g-date-picker-label {
   font-size: 0.8rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Campo principal */
 .g-date-picker-field {
   border-radius: 999px;
-  border: 1px solid #dadce0;
-  background-color: #ffffff;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface);
   display: flex;
   align-items: center;
   padding-right: 0.4rem;
@@ -468,8 +468,8 @@ onBeforeUnmount(() => {
 }
 
 .g-date-picker-field:focus-within {
-  border-color: var(--g-date-picker-focus, #1a73e8);
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
+  border-color: var(--g-date-picker-focus, var(--md-sys-color-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-sys-color-primary), transparent 80%);
 }
 
 .g-date-picker-input {
@@ -481,11 +481,12 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   font-family: inherit;
   font-size: 0.9rem;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-date-picker-input::placeholder {
-  color: #9aa0a6;
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.7;
 }
 
 /* Tamaños */
@@ -518,15 +519,15 @@ onBeforeUnmount(() => {
 
 .g-date-picker-icon-btn .material-symbols-outlined {
   font-size: 20px;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-date-picker-icon-btn:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: var(--md-sys-color-surface-container);
 }
 
 .g-date-picker-icon-btn--open {
-  background: rgba(26, 115, 232, 0.08);
+  background: var(--md-sys-color-primary-container);
 }
 
 .g-date-picker-clear .material-symbols-outlined {
@@ -535,7 +536,7 @@ onBeforeUnmount(() => {
 
 /* Disabled */
 .g-date-picker--disabled .g-date-picker-field {
-  background-color: #f1f3f4;
+  background-color: var(--md-sys-color-surface-variant);
   cursor: default;
 }
 
@@ -554,15 +555,15 @@ onBeforeUnmount(() => {
 
 /* Calendario interno */
 .g-calendar {
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
   border-radius: 12px;
   padding: 0.9rem 1rem 1rem;
-  box-shadow: 0 4px 8px rgba(60, 64, 67, 0.25);
-  border: 1px solid #dadce0;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
   min-width: 260px;
 }
 
@@ -604,11 +605,11 @@ onBeforeUnmount(() => {
 
 .g-icon-button .material-symbols-outlined {
   font-size: 20px;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: var(--md-sys-color-surface-container);
 }
 
 /* Weekdays */
@@ -622,7 +623,7 @@ onBeforeUnmount(() => {
   text-align: center;
   font-size: 0.72rem;
   font-weight: 500;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   padding: 0.2rem 0;
 }
 
@@ -664,29 +665,29 @@ onBeforeUnmount(() => {
 
 /* Estados visuales */
 .g-calendar-day--other .g-calendar-day-number {
-  color: #9aa0a6;
+  color: var(--md-sys-color-outline);
 }
 
 .g-calendar-day--today .g-calendar-day-number {
-  color: #1a73e8;
+  color: var(--md-sys-color-primary);
   font-weight: 500;
 }
 
 .g-calendar-day--selected {
-  background: #1a73e8;
+  background: var(--md-sys-color-primary);
 }
 
 .g-calendar-day--selected .g-calendar-day-number {
-  color: #ffffff;
+  color: var(--md-sys-color-on-primary);
   font-weight: 500;
 }
 
 .g-calendar-day:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: var(--md-sys-color-surface-container);
 }
 
 .g-calendar-day--selected:hover {
-  background: #1967d2;
+  filter: brightness(0.9);
 }
 
 /* Eventos */

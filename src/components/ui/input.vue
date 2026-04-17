@@ -180,13 +180,13 @@ function onFocus() {
 
 .g-input-label {
   font-size: 0.8rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-input-container {
   border-radius: 4px 4px 0 0; /* MD3 text field style */
-  border-bottom: 2px solid #5f6368;
-  background-color: var(--md-sys-color-surface-variant, #f1f3f4);
+  border-bottom: 2px solid var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface-variant);
   display: flex;
   align-items: center;
   transition:
@@ -195,7 +195,7 @@ function onFocus() {
 }
 
 .g-input-container:hover {
-  background-color: #e8eaed;
+  background-color: var(--md-sys-color-surface-container);
 }
 
 .g-input {
@@ -208,11 +208,12 @@ function onFocus() {
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-input::placeholder {
-  color: #9aa0a6;
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.7;
 }
 
 .g-input--textarea .g-input-container {
@@ -229,19 +230,19 @@ function onFocus() {
 }
 
 .g-input--error .g-input-container {
-  border-color: #d93025;
-  box-shadow: 0 0 0 1px rgba(217, 48, 37, 0.12);
+  border-color: var(--md-sys-color-error);
+  box-shadow: 0 0 0 1px rgba(var(--md-sys-color-error-rgb), 0.12);
 }
 
 .g-input-error {
   font-size: 0.75rem;
-  color: #d93025;
+  color: var(--md-sys-color-error);
   margin: 0.1rem 0 0 0;
 }
 
 .g-input-hint {
   font-size: 0.75rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   margin: 0.1rem 0 0 0;
 }
 </style>

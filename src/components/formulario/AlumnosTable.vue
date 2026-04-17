@@ -21,6 +21,25 @@
         <GoogleButton variant="text" :disabled="loading" @click="$emit('reload')">
           Recargar
         </GoogleButton>
+
+        <GoogleButton
+          v-if="selectedCount > 0"
+          variant="outlined"
+          :disabled="loading"
+          @click="emitBulkEdit"
+        >
+          Editar selección ({{ selectedCount }})
+        </GoogleButton>
+
+        <GoogleButton
+          v-if="selectedCount > 0"
+          variant="text"
+          :disabled="loading"
+          style="color: var(--md-sys-color-error)"
+          @click="emitBulkDelete"
+        >
+          Eliminar selección
+        </GoogleButton>
       </div>
     </template>
 
@@ -32,6 +51,15 @@
       <table class="table">
         <thead>
           <tr>
+            <th class="col-select">
+              <input
+                type="checkbox"
+                class="row-select-checkbox"
+                :checked="isAllFilteredSelected"
+                :indeterminate.prop="isSomeFilteredSelected"
+                @change="toggleSelectAllFiltered"
+              />
+            </th>
             <th>Matrícula</th>
             <th>Nombre</th>
             <th>Email</th>
@@ -43,6 +71,14 @@
         </thead>
         <tbody>
           <tr v-for="al in filteredAlumnos" :key="al.matricula">
+            <td class="cell-select">
+              <input
+                type="checkbox"
+                class="row-select-checkbox"
+                :checked="isSelected(al.matricula)"
+                @change="toggleSelection(al.matricula, $event)"
+              />
+            </td>
             <td>{{ al.matricula }}</td>
             <td>
               <div class="student-name-cell">
@@ -78,10 +114,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import type { Alumno } from '../../services/alumnos';
 import type { Carrera } from '../../services/carreras';
 import { useAuthStore } from '../../stores/auth';
+import { formatCarreraLabel } from '../../utils/carreras';
 
 // UI googlesca
 import SectionCard from '../layout/sideCard.vue';
@@ -113,6 +150,8 @@ const emit = defineEmits<{
   (e: 'reload'): void;
   (e: 'edit', alumno: Alumno): void;
   (e: 'delete', matricula: string): void;
+  (e: 'bulk-edit', matriculas: string[]): void;
+  (e: 'bulk-delete', matriculas: string[]): void;
   (e: 'update:search', value: string): void;
 }>();
 
@@ -139,7 +178,7 @@ onMounted(() => {
 
 function getCarreraNombre(id: number): string {
   const c = props.carreras.find((c) => c.id_carrera === id);
-  return c ? c.nombre : `ID ${id}`;
+  return c ? formatCarreraLabel(c) : `Carrera ${id}`;
 }
 
 // opciones para el select de carrera
@@ -147,7 +186,7 @@ const carreraOptions = computed(() => [
   { value: '', label: 'Todos los planes' },
   ...props.carreras.map((c) => ({
     value: c.id_carrera,
-    label: c.nombre,
+    label: formatCarreraLabel(c),
   })),
 ]);
 
@@ -181,6 +220,8 @@ const selectedCarreraLabel = computed(() => {
   return selected?.label ?? `Plan #${localCarreraFilter.value}`;
 });
 
+const selectedMatriculas = ref<string[]>([]);
+
 const filteredAlumnos = computed(() => {
   const term = (localSearch.value || '').toLowerCase().trim();
   const carreraFilter = localCarreraFilter.value;
@@ -209,6 +250,75 @@ const filteredAlumnos = computed(() => {
     );
   });
 });
+
+const selectedCount = computed(() => selectedMatriculas.value.length);
+
+const filteredMatriculas = computed(() =>
+  filteredAlumnos.value.map((alumno) => alumno.matricula),
+);
+
+const isAllFilteredSelected = computed(() => {
+  if (!filteredMatriculas.value.length) return false;
+  const selected = new Set(selectedMatriculas.value);
+  return filteredMatriculas.value.every((matricula) => selected.has(matricula));
+});
+
+const isSomeFilteredSelected = computed(() => {
+  if (!filteredMatriculas.value.length) return false;
+  const selected = new Set(selectedMatriculas.value);
+  const count = filteredMatriculas.value.filter((matricula) => selected.has(matricula)).length;
+  return count > 0 && count < filteredMatriculas.value.length;
+});
+
+function isSelected(matricula: string): boolean {
+  return selectedMatriculas.value.includes(matricula);
+}
+
+function toggleSelection(matricula: string, event: Event) {
+  const target = event.target as HTMLInputElement | null;
+  const checked = Boolean(target?.checked);
+
+  if (checked) {
+    if (!selectedMatriculas.value.includes(matricula)) {
+      selectedMatriculas.value = [...selectedMatriculas.value, matricula];
+    }
+    return;
+  }
+
+  selectedMatriculas.value = selectedMatriculas.value.filter((value) => value !== matricula);
+}
+
+function toggleSelectAllFiltered(event: Event) {
+  const target = event.target as HTMLInputElement | null;
+  const checked = Boolean(target?.checked);
+
+  if (checked) {
+    const merged = new Set([...selectedMatriculas.value, ...filteredMatriculas.value]);
+    selectedMatriculas.value = Array.from(merged);
+    return;
+  }
+
+  const visible = new Set(filteredMatriculas.value);
+  selectedMatriculas.value = selectedMatriculas.value.filter((matricula) => !visible.has(matricula));
+}
+
+function emitBulkEdit() {
+  if (!selectedMatriculas.value.length) return;
+  emit('bulk-edit', [...selectedMatriculas.value]);
+}
+
+function emitBulkDelete() {
+  if (!selectedMatriculas.value.length) return;
+  emit('bulk-delete', [...selectedMatriculas.value]);
+}
+
+watch(
+  () => props.alumnos,
+  (current) => {
+    const available = new Set(current.map((alumno) => alumno.matricula));
+    selectedMatriculas.value = selectedMatriculas.value.filter((matricula) => available.has(matricula));
+  },
+);
 </script>
 
 <style scoped>
@@ -238,13 +348,13 @@ const filteredAlumnos = computed(() => {
 
 .student-plan {
   font-size: 0.75rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .table-wrapper {
   margin-top: 0.75rem;
   border-radius: 12px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--md-sys-color-outline-variant);
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -252,7 +362,7 @@ const filteredAlumnos = computed(() => {
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
 }
 
 .table th,
@@ -262,19 +372,35 @@ const filteredAlumnos = computed(() => {
 }
 
 .table thead {
-  background: #f8f9fa;
+  background: var(--md-sys-color-surface-container);
 }
 
 .table th {
   text-align: left;
   font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
+  color: var(--md-sys-color-on-surface-variant);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.col-select {
+  width: 40px;
+  text-align: center;
 }
 
 .table td {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
+}
+
+.cell-select {
+  text-align: center;
+}
+
+.row-select-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--md-sys-color-primary);
+  cursor: pointer;
 }
 
 .col-actions {
@@ -297,15 +423,15 @@ const filteredAlumnos = computed(() => {
 }
 
 .chip-success {
-  background: #e6f4ea;
-  border-color: #c8e6c9;
-  color: #1e8e3e;
+  background: var(--md-sys-color-success-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-success);
 }
 
 .chip-muted {
-  background: #f1f3f4;
-  border-color: #e0e0e0;
-  color: #5f6368;
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .icon-button {
@@ -318,19 +444,19 @@ const filteredAlumnos = computed(() => {
 }
 
 .icon-button:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: var(--md-sys-color-surface-container);
 }
 
 .icon-danger {
-  color: #d93025;
+  color: var(--md-sys-color-error);
 }
 
 .icon-danger:hover {
-  background: rgba(217, 48, 37, 0.12);
+  background: color-mix(in srgb, var(--md-sys-color-error), transparent 85%);
 }
 
 .error {
-  color: #d93025;
+  color: var(--md-sys-color-error);
   font-size: 0.85rem;
   margin-top: 0.5rem;
 }
@@ -338,6 +464,6 @@ const filteredAlumnos = computed(() => {
 .empty {
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 </style>

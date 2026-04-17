@@ -1,10 +1,10 @@
-<!-- src/views/MetodosPagoView.vue (o MétodosDePagoView.vue, como lo tengas en el router) -->
+<!-- src/views/MetodosPagoView.vue -->
 <template>
   <section class="page g-page-animate">
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
       <RouterLink to="/inicio" custom v-slot="{ navigate }">
-        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+        <GoogleButton @click="navigate" size="sm">
           <span class="material-symbols-outlined">arrow_back</span>
           Volver a inicio
         </GoogleButton>
@@ -20,11 +20,9 @@
         </p>
       </div>
       <div class="page-header-meta">
-        <span class="chip chip-soft">
-          Total: <strong>{{ metodos.length }}</strong>
-        </span>
+        <GoogleChip variant="soft">Total: <strong>{{ metodos.length }}</strong></GoogleChip>
 
-        <GoogleButton size="sm" color="#1a73e8" @click="openCreateForm">
+        <GoogleButton size="sm" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nuevo método
         </GoogleButton>
@@ -64,6 +62,7 @@ import { RouterLink } from 'vue-router';
 import GoogleButton from '../components/ui/button.vue';
 import GoogleInput from '../components/ui/input.vue';
 import GoogleModal from '../components/modal/modal.vue';
+import GoogleChip from '../components/ui/chip.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
 
 import {
@@ -243,17 +242,18 @@ onMounted(loadMetodos);
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  margin-bottom: 2rem;
 }
 
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .page-subtitle {
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.25rem;
 }
 
@@ -275,14 +275,14 @@ onMounted(loadMetodos);
 }
 
 .chip-soft {
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .chip-primary {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
-  color: #1a73e8;
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 /* Formulario dentro del modal */

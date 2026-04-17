@@ -46,7 +46,8 @@
           <tr v-for="row in filteredRows" :key="getRowKey(row)">
             <td v-for="col in columns" :key="String(col.key)" class="g-table-cell"
               :class="col.align ? `g-table-cell--${col.align}` : ''">
-              {{ formatCell(row, col) }}
+              <span v-if="col.badge" class="g-table-badge">{{ formatCell(row, col) }}</span>
+              <template v-else>{{ formatCell(row, col) }}</template>
             </td>
 
             <td v-if="useDefaultActions" class="g-table-cell g-table-cell--right g-table-cell-actions">
@@ -84,6 +85,7 @@ export interface TableColumn<T = any> {
   label: string;                  // encabezado
   width?: string;                 // ej. '90px'
   align?: Align;                  // 'left' | 'center' | 'right'
+  badge?: boolean;                // renderizar valor como badge
   formatter?: (row: T) => any;    // función para formatear el valor
 }
 
@@ -214,7 +216,7 @@ const filteredRows = computed(() => {
 .g-table-wrapper {
   margin-top: 0.75rem;
   border-radius: 12px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--md-sys-color-outline-variant);
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -222,7 +224,7 @@ const filteredRows = computed(() => {
 .g-table {
   width: 100%;
   border-collapse: collapse;
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
 }
 
 .g-table-header-cell,
@@ -232,19 +234,31 @@ const filteredRows = computed(() => {
 }
 
 .g-table thead {
-  background: #f8f9fa;
+  background: var(--md-sys-color-surface-container);
 }
 
 .g-table-header-cell {
   text-align: left;
   font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
+  color: var(--md-sys-color-on-surface-variant);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .g-table-cell {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
+}
+
+.g-table-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+  border: 1px solid var(--md-sys-color-primary-container);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 /* alineación */
@@ -276,9 +290,9 @@ const filteredRows = computed(() => {
 .g-icon-button {
   width: 32px;
   height: 32px;
-  border: 1px solid #c6dafc;
-  background: #e8f0fe;
-  color: #174ea6;
+  border: 1px solid var(--md-sys-color-primary-container);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-primary);
   cursor: pointer;
   border-radius: 8px;
   padding: 0;
@@ -290,25 +304,25 @@ const filteredRows = computed(() => {
 }
 
 .g-icon-button:hover {
-  background: #dbe7fd;
-  border-color: #afc9f7;
+  background: color-mix(in srgb, var(--md-sys-color-primary), transparent 85%);
+  border-color: var(--md-sys-color-primary);
 }
 
 .g-icon-button--danger {
-  border-color: #f6c8c4;
-  background: #fdeceb;
-  color: #d93025;
+  border-color: var(--md-sys-color-error);
+  background: color-mix(in srgb, var(--md-sys-color-error), transparent 85%);
+  color: var(--md-sys-color-error);
 }
 
 .g-icon-button--danger:hover {
-  background: #fbd6d3;
-  border-color: #efb2ab;
+  background: color-mix(in srgb, var(--md-sys-color-error), transparent 75%);
+  border-color: var(--md-sys-color-error);
 }
 
 /* Estados */
 
 .g-table-error {
-  color: #d93025;
+  color: var(--md-sys-color-error);
   font-size: 0.85rem;
   margin-top: 0.5rem;
 }
@@ -316,7 +330,7 @@ const filteredRows = computed(() => {
 .g-table-empty {
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* Toast interno */
@@ -330,8 +344,8 @@ const filteredRows = computed(() => {
   padding: 0.25rem 0.6rem;
   border-radius: 999px;
   font-size: 0.8rem;
-  background: #e6f4ea;
-  color: #1e8e3e;
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-success);
 }
 
 .g-table-toast-icon {

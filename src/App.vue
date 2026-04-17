@@ -1,8 +1,8 @@
 <!-- src/App.vue -->
 <template>
-  <div class="app">
+  <div class="app" :class="{ dark: isDark }">
     <!-- Header Componentizado -->
-    <Header v-if="auth.isAuthenticated" />
+    <Header v-if="auth.isAuthenticated" :isDark="isDark" @toggle-theme="toggleTheme" />
 
     <main class="app-main">
       <RouterView v-slot="{ Component, route }">
@@ -17,14 +17,30 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useAuthStore } from './stores/auth';
 import Header from './components/layout/header.vue';
 
 const auth = useAuthStore();
+const isDark = ref(false);
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value;
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light');
+};
+
+watch(isDark, (val) => {
+  if (val) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}, { immediate: true });
 
 onMounted(() => {
   auth.initialize();
+  const savedTheme = localStorage.getItem('theme');
+  isDark.value = savedTheme === 'dark';
 });
 
 // Animaciones de página optimizadas
@@ -61,16 +77,14 @@ const onLeave = (el: any, done: () => void) => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #fcfcfc;
+  background-color: var(--md-sys-color-background);
 }
 
 .app-main {
   flex: 1;
-  padding: 1.5rem;
-  /* Espaciado para el header sticky */
-  max-width: 1600px;
   width: 100%;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .route-view-shell {
@@ -88,11 +102,11 @@ const onLeave = (el: any, done: () => void) => {
 }
 
 :global(::-webkit-scrollbar-thumb) {
-  background: #dadce0;
+  background: var(--md-sys-color-surface-variant);
   border-radius: 10px;
 }
 
 :global(::-webkit-scrollbar-thumb:hover) {
-  background: #bdc1c6;
+  background: var(--md-sys-color-on-surface-variant);
 }
 </style>

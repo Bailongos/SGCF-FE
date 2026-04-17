@@ -4,7 +4,7 @@
     <!-- Botón para volver a Inicio -->
     <div class="back-to-home">
       <RouterLink to="/inicio" custom v-slot="{ navigate }">
-        <GoogleButton @click="navigate" color="#1a73e8" size="sm">
+        <GoogleButton @click="navigate" variant="text" size="sm">
           <span class="material-symbols-outlined">arrow_back</span>
           Volver a inicio
         </GoogleButton>
@@ -26,7 +26,7 @@
         </span>
 
         <!-- Botón "Nuevo alumno" - Visible para Admin y Coordinador -->
-        <GoogleButton v-if="auth.can('action.alumno.create')" size="sm" color="#1a73e8" @click="openCreateForm">
+        <GoogleButton v-if="auth.can('action.alumno.create')" size="sm" @click="openCreateForm">
           <span class="material-symbols-outlined">add</span>
           Nuevo alumno
         </GoogleButton>
@@ -35,7 +35,8 @@
 
     <!-- Tabla -->
     <AlumnosTable :alumnos="alumnos" :carreras="carreras" :loading="loadingList" :error="error" v-model:search="search"
-      @reload="loadAlumnos" @edit="onEdit" @delete="onDelete" />
+      @reload="loadAlumnos" @edit="onEdit" @delete="onDelete" @bulk-edit="openBulkEdit"
+      @bulk-delete="onBulkDelete" />
 
     <!-- Modal: Crear / Editar alumno -->
     <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit' : 'person_add'"
@@ -48,6 +49,52 @@
         @download-template="downloadTemplate" @open-bulk-modal="openBulkModal" />
     </GoogleModal>
 
+    <GoogleModal v-model="showBulkEditModal" icon="group" title="Editar alumnos en lote"
+      subtitle="Actualiza matrícula, nombre, contacto, plan, semestre y estado de múltiples alumnos."
+      maxWidth="1000px" density="comfortable" :confirmLoading="loadingBulkEdit" confirmText="Guardar cambios"
+      cancelText="Cancelar" @confirm="submitBulkEdit" @cancel="closeBulkEditModal">
+      <form class="bulk-edit-form" @submit.prevent="submitBulkEdit">
+        <p class="bulk-edit-summary">Seleccionados: <strong>{{ bulkEditRows.length }}</strong></p>
+        <div class="bulk-edit-table-wrap">
+          <table class="bulk-edit-table">
+            <thead>
+              <tr>
+                <th>Matrícula</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+                <th>Plan</th>
+                <th>Semestre</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, index) in bulkEditRows" :key="`${row.original_matricula}-${index}`">
+                <td><input v-model.trim="row.matricula" class="bulk-input" /></td>
+                <td><input v-model.trim="row.nombre_completo" class="bulk-input" /></td>
+                <td><input v-model.trim="row.email_institucional" class="bulk-input" /></td>
+                <td><input v-model.trim="row.telefono_contacto" class="bulk-input" /></td>
+                <td>
+                  <select v-model.number="row.id_carrera" class="bulk-input">
+                    <option v-for="c in carreras" :key="c.id_carrera" :value="c.id_carrera">
+                      {{ c.clave }} - {{ c.nombre }}
+                    </option>
+                  </select>
+                </td>
+                <td><input v-model.number="row.semestre_actual" type="number" min="1" class="bulk-input" /></td>
+                <td>
+                  <select v-model.number="row.activo" class="bulk-input">
+                    <option :value="1">Activo</option>
+                    <option :value="0">Inactivo</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </form>
+    </GoogleModal>
+
     <!-- Modal carga masiva -->
     <AlumnosBulkModal v-model="showBulkModal" :file-name="bulkFileName" :rows="bulkRows" :errors="bulkErrors"
       :parsing="bulkParsing" :loading="bulkLoading" :progress="bulkProgress" @file-change="onBulkFileChange"
@@ -56,9 +103,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import * as XLSX from 'xlsx';
 import { useAuthStore } from '../stores/auth';
 
 import AlumnosForm from '../components/formulario/AlumnosForm.vue';
@@ -83,6 +129,7 @@ import { getConceptos, type Concepto } from '../services/conceptos';
 import { getCiclosEscolares, type CicloEscolar } from '../services/ciclos-escolares';
 import { getMetodosPago, type MetodoPago } from '../services/metodo-pago';
 import { createCuenta, type CuentaPayload } from '../services/cuentas';
+import { runWithConcurrency } from '../utils/async';
 
 // ---------- Estado principal ----------
 const alumnos = ref<Alumno[]>([]);
@@ -115,6 +162,26 @@ const bulkProgress = ref({ processed: 0, total: 0 });
 // Agregar otro
 const addAnother = ref(false);
 
+const showBulkEditModal = ref(false);
+const loadingBulkEdit = ref(false);
+
+type BulkAlumnoEditRow = {
+  original_matricula: string;
+  matricula: string;
+  nombre_completo: string;
+  email_institucional: string;
+  telefono_contacto: string;
+  id_carrera: number;
+  semestre_actual: number;
+  activo: number;
+};
+
+const bulkEditRows = ref<BulkAlumnoEditRow[]>([]);
+
+const alumnosByMatricula = computed(() =>
+  new Map(alumnos.value.map((alumno) => [alumno.matricula, alumno])),
+);
+
 // ---------- Helpers de formulario ----------
 const createEmptyForm = (): any => ({
   matricula: '',
@@ -137,6 +204,10 @@ const resetForm = () => {
   isEditing.value = false;
   editingMatricula.value = null;
 };
+
+async function loadXlsxModule() {
+  return import('xlsx');
+}
 
 // ---------- Carga de datos ----------
 async function loadAlumnos() {
@@ -274,6 +345,118 @@ function handleCancelForm() {
   showFormModal.value = false;
 }
 
+function openBulkEdit(matriculas: string[]) {
+  bulkEditRows.value = matriculas
+    .map((matricula) => alumnosByMatricula.value.get(matricula))
+    .filter((item): item is Alumno => Boolean(item))
+    .map((alumno) => ({
+      original_matricula: alumno.matricula,
+      matricula: alumno.matricula,
+      nombre_completo: alumno.nombre_completo,
+      email_institucional: alumno.email_institucional ?? '',
+      telefono_contacto: alumno.telefono_contacto ?? '',
+      id_carrera: Number(alumno.id_carrera),
+      semestre_actual: Number(alumno.semestre_actual),
+      activo: alumno.activo ? 1 : 0,
+    }));
+
+  if (!bulkEditRows.value.length) return;
+  showBulkEditModal.value = true;
+}
+
+function closeBulkEditModal() {
+  showBulkEditModal.value = false;
+  bulkEditRows.value = [];
+}
+
+function validateBulkEditRows(): string | null {
+  const seen = new Set<string>();
+
+  for (const row of bulkEditRows.value) {
+    if (!String(row.matricula).trim()) return 'Todas las matrículas son obligatorias.';
+    if (!String(row.nombre_completo).trim()) return 'Todos los nombres son obligatorios.';
+    if (!Number.isFinite(Number(row.id_carrera)) || Number(row.id_carrera) <= 0) {
+      return 'Todos los alumnos deben tener carrera válida.';
+    }
+    if (!Number.isFinite(Number(row.semestre_actual)) || Number(row.semestre_actual) <= 0) {
+      return 'Todos los semestres deben ser mayores a 0.';
+    }
+
+    const matricula = String(row.matricula).trim();
+    if (seen.has(matricula)) return `Matrícula repetida en lote: ${matricula}`;
+    seen.add(matricula);
+  }
+
+  return null;
+}
+
+async function submitBulkEdit() {
+  if (!bulkEditRows.value.length) return;
+
+  const validationError = validateBulkEditRows();
+  if (validationError) {
+    error.value = validationError;
+    return;
+  }
+
+  loadingBulkEdit.value = true;
+  error.value = null;
+
+  try {
+    const results = await runWithConcurrency(bulkEditRows.value, 6, (row) =>
+      updateAlumno(row.original_matricula, {
+        matricula: String(row.matricula).trim(),
+        nombre_completo: String(row.nombre_completo).trim(),
+        email_institucional: String(row.email_institucional).trim(),
+        telefono_contacto: String(row.telefono_contacto).trim(),
+        id_carrera: Number(row.id_carrera),
+        semestre_actual: Number(row.semestre_actual),
+        activo: Number(row.activo) === 1,
+      }),
+    );
+
+    const failed = results.filter((result) => result.status === 'rejected').length;
+    await loadAlumnos();
+
+    if (failed > 0) {
+      error.value = `Se actualizaron ${results.length - failed} de ${results.length} alumnos.`;
+      return;
+    }
+
+    closeBulkEditModal();
+  } catch (e: any) {
+    console.error(e);
+    error.value = `Error al actualizar alumnos en lote: ${e?.response?.data?.message ?? e?.message ?? 'Error desconocido'}`;
+  } finally {
+    loadingBulkEdit.value = false;
+  }
+}
+
+async function onBulkDelete(matriculas: string[]) {
+  if (!matriculas.length) return;
+
+  if (!confirm(`¿Eliminar ${matriculas.length} alumno(s) seleccionados?`)) return;
+
+  loadingList.value = true;
+  error.value = null;
+
+  try {
+    const results = await runWithConcurrency(matriculas, 6, (matricula) => deleteAlumno(matricula));
+
+    const failed = results.filter((result) => result.status === 'rejected').length;
+    await loadAlumnos();
+
+    if (failed > 0) {
+      error.value = `Se eliminaron ${results.length - failed} de ${results.length} alumnos.`;
+    }
+  } catch (e: any) {
+    console.error(e);
+    error.value = `Error al eliminar alumnos en lote: ${e?.response?.data?.message ?? e?.message ?? 'Error desconocido'}`;
+  } finally {
+    loadingList.value = false;
+  }
+}
+
 async function onDelete(matricula: string) {
   if (!confirm(`¿Eliminar alumno ${matricula}?`)) return;
   try {
@@ -289,7 +472,9 @@ async function onDelete(matricula: string) {
 }
 
 // ---------- Plantilla Excel ----------
-function downloadTemplate() {
+async function downloadTemplate() {
+  const XLSX = await loadXlsxModule();
+
   const headers = [
     'matricula',
     'nombre_completo',
@@ -344,6 +529,7 @@ async function onBulkFileChange(event: Event) {
   bulkProgress.value = { processed: 0, total: 0 };
 
   try {
+    const XLSX = await loadXlsxModule();
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data, { type: 'array' });
 
@@ -535,12 +721,12 @@ watch(showBulkModal, (value) => {
 .page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .page-subtitle {
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.25rem;
 }
 
@@ -560,13 +746,65 @@ watch(showBulkModal, (value) => {
 }
 
 .chip-soft {
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .chip-primary {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
-  color: #1a73e8;
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.bulk-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bulk-edit-summary {
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-size: 0.85rem;
+}
+
+.bulk-edit-table-wrap {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 380px;
+}
+
+.bulk-edit-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.bulk-edit-table th,
+.bulk-edit-table td {
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.bulk-edit-table th {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.bulk-input {
+  width: 100%;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.84rem;
 }
 </style>

@@ -95,51 +95,52 @@ const emit = defineEmits<{
   margin: 0;
   padding: 0.8rem 1rem;
   border-radius: 10px;
-  background: #fdeceb;
-  color: #b3261e;
-  border: 1px solid #f6c8c4;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border: 1px solid var(--md-sys-color-error);
 }
 
 .table-state {
   padding: 1.2rem;
   text-align: center;
-  color: #5f6368;
-  border: 1px dashed #dadce0;
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px dashed var(--md-sys-color-outline-variant);
   border-radius: 12px;
-  background: #fafbfc;
+  background: var(--md-sys-color-surface-container);
 }
 
 .table-wrapper {
   overflow-x: auto;
-  border: 1px solid #e4e7eb;
+  border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 14px;
 }
 
 .users-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
+  background: var(--md-sys-color-surface);
 }
 
 .users-table th,
 .users-table td {
   padding: 0.75rem;
-  border-bottom: 1px solid #eef1f3;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
   text-align: left;
   font-size: 0.85rem;
   vertical-align: middle;
+  color: var(--md-sys-color-on-surface);
 }
 
 .users-table th {
-  background: #f8f9fa;
-  color: #3c4043;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.8rem;
   letter-spacing: 0.02em;
 }
 
 .username-cell {
   font-weight: 600;
-  color: #174ea6;
+  color: var(--md-sys-color-primary);
 }
 
 .status-badge {
@@ -152,18 +153,18 @@ const emit = defineEmits<{
 }
 
 .status-activo {
-  background: #e6f4ea;
-  color: #137333;
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-on-success-container);
 }
 
 .status-inactivo {
-  background: #fdeceb;
-  color: #b3261e;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .status-pendiente {
-  background: #fff3cd;
-  color: #8a6100;
+  background: var(--md-sys-color-warning-container);
+  color: var(--md-sys-color-on-warning-container);
 }
 
 .access-chips {
@@ -180,15 +181,15 @@ const emit = defineEmits<{
 }
 
 .access-on {
-  background: #e8f0fe;
-  color: #174ea6;
-  border-color: #c6dafc;
+  background: var(--md-sys-color-info-container);
+  color: var(--md-sys-color-on-info-container);
+  border-color: var(--md-sys-color-info);
 }
 
 .access-off {
-  background: #f1f3f4;
-  color: #5f6368;
-  border-color: #e0e3e7;
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  border-color: var(--md-sys-color-outline-variant);
 }
 
 .actions-col,
@@ -203,9 +204,9 @@ const emit = defineEmits<{
 }
 
 .row-action {
-  border: 1px solid #d7dce1;
-  background: #fff;
-  color: #3c4043;
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
   border-radius: 8px;
   padding: 0.35rem 0.55rem;
   font-size: 0.75rem;
@@ -213,20 +214,20 @@ const emit = defineEmits<{
 }
 
 .row-action-edit {
-  border-color: #c6dafc;
-  color: #174ea6;
-  background: #e8f0fe;
+  border-color: var(--md-sys-color-info);
+  color: var(--md-sys-color-on-info-container);
+  background: var(--md-sys-color-info-container);
 }
 
 .row-action-enable {
-  border-color: #b7dfc7;
-  background: #e6f4ea;
-  color: #137333;
+  border-color: var(--md-sys-color-success);
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-on-success-container);
 }
 
 .row-action-disable {
-  border-color: #f6c8c4;
-  background: #fdeceb;
-  color: #b3261e;
+  border-color: var(--md-sys-color-error);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 </style>

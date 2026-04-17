@@ -20,6 +20,7 @@ export interface LoginResponse {
 export interface RegisterPayload {
   username: string;
   password: string;
+  email?: string | null;
   id_rol?: number;
   id_carrera?: number | null;
   activo?: boolean;
@@ -35,13 +36,22 @@ export interface RegisterResponse {
   };
 }
 
+export interface MicrosoftTokenResponse {
+  token_type: 'Bearer';
+  access_token: string;
+  id_token?: string;
+  refresh_token?: string;
+  expires_in: number;
+  scope: string;
+}
+
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const { data } = await api.post<LoginResponse>('/auth/login', { username, password });
   return data;
 }
 
 export async function loginWithGoogle(id_token: string): Promise<LoginResponse> {
-  const { data } = await api.post<LoginResponse>('/auth/google', { id_token });
+  const { data } = await api.post<LoginResponse>('/auth/google', { token: id_token });
   return data;
 }
 

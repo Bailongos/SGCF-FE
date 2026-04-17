@@ -5,7 +5,7 @@
 }
 
 :root {
-  /* MD3 Color Palette */
+  /* MD3 Color Palette - Light Theme */
   --md-sys-color-primary: #1a73e8;
   --md-sys-color-on-primary: #ffffff;
   --md-sys-color-primary-container: #d3e3fd;
@@ -13,6 +13,8 @@
 
   --md-sys-color-secondary: #5f6368;
   --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #e8eaed;
+  --md-sys-color-on-secondary-container: #1f1f1f;
 
   --md-sys-color-surface: #ffffff;
   --md-sys-color-on-surface: #1f1f1f;
@@ -24,6 +26,37 @@
 
   --md-sys-color-error: #b3261e;
   --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #f9dedc;
+  --md-sys-color-on-error-container: #410e0b;
+
+  --md-sys-color-warning: #9e6000;
+  --md-sys-color-on-warning: #ffffff;
+  --md-sys-color-warning-container: #ffe08d;
+  --md-sys-color-on-warning-container: #331d00;
+
+  --md-sys-color-info: #0061a4;
+  --md-sys-color-on-info: #ffffff;
+  --md-sys-color-info-container: #d1e4ff;
+  --md-sys-color-on-info-container: #001d36;
+
+  --md-sys-color-outline: #747775;
+  --md-sys-color-outline-variant: #c4c7c5;
+  --md-sys-color-surface-container: #f0f4f8;
+
+  --md-sys-color-success: #1e8e3e;
+  --md-sys-color-on-success: #ffffff;
+  --md-sys-color-success-container: #e6f4ea;
+  --md-sys-color-on-success-container: #072711;
+
+  /* Module Specific Colors - Light */
+  --module-color-blue: #1a73e8;
+  --module-color-green: #0b8043;
+  --module-color-red: #d93025;
+  --module-color-orange: #f9ab00;
+  --module-color-purple: #7b1fa2;
+  --module-color-gray: #5f6368;
+  --module-color-emerald: #0b8043;
+  --module-color-warning: #e37400;
 
   /* Typography */
   --md-sys-typescale-body-large-font: "Roboto", sans-serif;
@@ -43,6 +76,63 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark Theme */
+.dark {
+  --md-sys-color-primary: #8ab4f8;
+  --md-sys-color-on-primary: #003049;
+  --md-sys-color-primary-container: #004a77;
+  --md-sys-color-on-primary-container: #d3e3fd;
+
+  --md-sys-color-secondary: #9aa0a6;
+  --md-sys-color-on-secondary: #2f3030;
+  --md-sys-color-secondary-container: #3c4043;
+  --md-sys-color-on-secondary-container: #e8eaed;
+
+  --md-sys-color-surface: #1f1f1f;
+  --md-sys-color-on-surface: #e8eaed;
+  --md-sys-color-surface-variant: #2f3030;
+  --md-sys-color-on-surface-variant: #9aa0a6;
+
+  --md-sys-color-background: #121212;
+  --md-sys-color-on-background: #e8eaed;
+
+  --md-sys-color-error: #f2b8b5;
+  --md-sys-color-on-error: #601410;
+  --md-sys-color-error-container: #8c1d18;
+  --md-sys-color-on-error-container: #f9dedc;
+
+  --md-sys-color-warning: #ffba28;
+  --md-sys-color-on-warning: #4e3100;
+  --md-sys-color-warning-container: #6f4b00;
+  --md-sys-color-on-warning-container: #ffe08d;
+
+  --md-sys-color-info: #9ecaff;
+  --md-sys-color-on-info: #003258;
+  --md-sys-color-info-container: #00497d;
+  --md-sys-color-on-info-container: #d1e4ff;
+
+  --md-sys-color-outline: #8e918f;
+  --md-sys-color-outline-variant: #444746;
+  --md-sys-color-surface-container: #1e1e1e;
+
+  --md-sys-color-success: #81c995;
+  --md-sys-color-on-success: #072711;
+  --md-sys-color-success-container: #0f5223;
+  --md-sys-color-on-success-container: #e6f4ea;
+
+  /* Module Specific Colors - Dark */
+  --module-color-blue: #8ab4f8;
+  --module-color-green: #81c995;
+  --module-color-red: #f28b82;
+  --module-color-orange: #fdd663;
+  --module-color-purple: #d7aefb;
+  --module-color-gray: #9aa0a6;
+  --module-color-emerald: #81c995;
+  --module-color-warning: #ffbb00;
+
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -57,6 +147,7 @@ a {
   color: var(--md-sys-color-primary);
   text-decoration: none;
 }
+
 a:hover {
   text-decoration: underline;
 }
@@ -104,31 +195,32 @@ button:focus-visible {
 }
 
 #app {
-  max-width: 1600px; /* Increased slightly to allow more room for gutters */
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   text-align: left;
-  padding: 0 1.5rem; /* Increased starting gutter */
-}
-
-@media (min-width: 1024px) {
-  #app {
-    padding: 0 3rem; /* Generous gutter for large screens */
-  }
 }
 
 .page {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 1360px; /* Focused content width */
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
+  padding: 1.5rem;
   box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 1rem;
+  }
 }
 
 .card {
   background-color: var(--md-sys-color-surface);
-  border-radius: 16px; /* slightly more rounded for MD3 */
+  border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 2px 4px 0 rgba(60, 64, 67, 0.1),
               0 1px 2px 0 rgba(60, 64, 67, 0.06);

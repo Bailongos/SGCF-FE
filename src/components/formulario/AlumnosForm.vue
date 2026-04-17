@@ -112,6 +112,7 @@ import type { Carrera } from '../../services/carreras';
 import type { Concepto } from '../../services/conceptos';
 import type { CicloEscolar } from '../../services/ciclos-escolares';
 import type { MetodoPago } from '../../services/metodo-pago';
+import { formatCarreraLabel } from '../../utils/carreras';
 
 // Shell de formulario genérico
 import GenericForm from './formulario.vue';
@@ -168,7 +169,7 @@ const enableInitialDebt = computed(() => props.enableInitialDebt ?? false);
 const carreraOptions = computed(() =>
   props.carreras.map((c) => ({
     value: c.id_carrera,
-    label: `${c.nombre} (${c.duracion_semestres} semestres)`,
+    label: formatCarreraLabel(c),
   })),
 );
 
