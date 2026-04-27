@@ -36,16 +36,7 @@
       </div>
 
       <div class="sso-buttons">
-        <GoogleButton
-          type="button"
-          variant="outlined"
-          class="sso-btn"
-          :loading="loadingGoogle"
-          @click="startGoogleLogin"
-        >
-          <span class="sso-brand">G</span>
-          Continuar con Google
-        </GoogleButton>
+        <div id="googleSignInDiv" class="sso-btn-google"></div>
 
         <GoogleButton
           type="button"
@@ -80,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import GoogleInput from '../components/ui/input.vue';
@@ -91,8 +82,8 @@ const username = ref('');
 const password = ref('');
 
 const loadingLocal = ref(false);
-const loadingGoogle = ref(false);
 const loadingMicrosoft = ref(false);
+const loadingGoogle = ref(false);
 
 const error = ref<string | null>(null);
 
@@ -170,7 +161,7 @@ async function ensureGoogleIdentityReady() {
     throw new Error('Falta VITE_GOOGLE_CLIENT_ID.');
   }
 
-  await loadScriptOnce('google-gsi-client', 'https://accounts.google.com/gsi/client');
+  await loadScriptOnce('google-gsi-client', 'https://accounts.google.com/gsi/client?hl=es');
 
   const win = window as any;
   if (!win.google?.accounts?.id) {
@@ -183,10 +174,23 @@ async function ensureGoogleIdentityReady() {
       callback: handleGoogleCredential,
       auto_select: false,
       cancel_on_tap_outside: true,
-      use_fedcm_for_prompt: true,
+      use_fedcm_for_prompt: false,
       itp_support: true,
       ux_mode: 'popup',
     });
+    
+    const googleBtnDiv = document.getElementById('googleSignInDiv');
+    if (googleBtnDiv) {
+      win.google.accounts.id.renderButton(googleBtnDiv, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'rectangular',
+        logo_alignment: 'left',
+        width: 366 // Ancho ajustado para que coincida con el formulario
+      });
+    }
+
     googleInitialized = true;
   }
 }
@@ -209,54 +213,29 @@ async function handleLogin() {
 }
 
 function handleGoogleCredential(response: { credential?: string }) {
+  console.log('[Auth] CALLBACK DISPARADO! token:', response?.credential ? 'Sí' : 'No');
   const idToken = String(response?.credential ?? '');
   if (!idToken) {
     loadingGoogle.value = false;
     error.value = 'Google no devolvio un token valido.';
+    console.error('[Auth] Fallo: no se recibió token.');
     return;
   }
 
+  console.log('[Auth] Iniciando llamada al backend...');
+  loadingGoogle.value = true;
   void (async () => {
     try {
       await auth.loginWithGoogle(idToken);
+      console.log('[Auth] Éxito. Redirigiendo a /inicio');
       router.push('/inicio');
     } catch (err) {
-      console.error(err);
+      console.error('[Auth] Error devuelto por el backend:', err);
       error.value = parseAuthError(err, 'No fue posible iniciar sesion con Google.');
     } finally {
       loadingGoogle.value = false;
     }
   })();
-}
-
-async function startGoogleLogin() {
-  loadingGoogle.value = true;
-  error.value = null;
-
-  try {
-    await ensureGoogleIdentityReady();
-
-    const win = window as any;
-    win.google.accounts.id.prompt((notification: any) => {
-      if (notification?.getDismissedReason?.()) {
-        const reason = notification.getDismissedReason();
-        if (reason === 'credential_returned') return; // Success, handled by callback
-        loadingGoogle.value = false;
-        error.value =
-          'No se pudo abrir Google Sign-In. Verifica popups o intenta nuevamente.';
-      }
-    });
-
-    window.setTimeout(() => {
-      if (loadingGoogle.value) {
-        loadingGoogle.value = false;
-      }
-    }, 10000);
-  } catch (err) {
-    console.error(err);
-    loadingGoogle.value = false;
-    error.value = parseAuthError(err, 'No fue posible inicializar Google Sign-In.');
-  }
 }
 async function startMicrosoftLogin() {
   loadingMicrosoft.value = true;
@@ -293,7 +272,10 @@ onMounted(() => {
 
   ensureGoogleIdentityReady()
     .then(() => console.log('[Auth] Google ready'))
-    .catch((e) => console.warn('[Auth] Google init error:', e));
+    .catch((e) => {
+      console.warn('[Auth] Google init error:', e);
+      error.value = parseAuthError(e, 'No fue posible cargar Google Sign-In.');
+    });
 
   initializeMsal()
     .then(() => console.log('[Auth] MSAL ready'))
@@ -419,24 +401,17 @@ onMounted(() => {
   gap: 0.65rem;
 }
 
+.sso-btn-google {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .sso-btn {
   width: 100%;
   justify-content: flex-start;
   border-radius: 10px;
   padding-left: 0.85rem;
-}
-
-.sso-brand {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--md-sys-color-surface-container-highest);
-  color: var(--md-sys-color-on-surface);
-  font-weight: 700;
-  font-size: 0.8rem;
 }
 
 .sso-brand-img {

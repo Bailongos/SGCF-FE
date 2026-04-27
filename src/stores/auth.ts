@@ -8,7 +8,6 @@ import {
   type LoginResponse,
 } from '../services/auth';
 import { getRolePermissionSet, type PermissionKey } from '../security/permissions';
-import { logoutMsal } from '../services/msal';
 
 interface AuthUser {
   id_usuario: number;
