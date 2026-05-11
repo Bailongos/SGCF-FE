@@ -150,7 +150,6 @@ import {
   onMounted,
   onBeforeUnmount,
 } from 'vue';
-import GoogleButton from '../ui/button.vue';
 
 export interface CalendarEvent {
   date: string; // 'YYYY-MM-DD'
