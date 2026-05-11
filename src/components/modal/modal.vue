@@ -6,7 +6,7 @@
         <div class="g-modal-dialog" :style="{ maxWidth }" @click.stop>
           <div class="g-modal-card-wrapper">
             <button type="button" class="g-modal-close-btn" @click="close" aria-label="Cerrar">
-              ✕
+              <span class="material-symbols-outlined">close</span>
             </button>
             <SectionCard class="g-modal-card" :icon="icon" :title="title" :subtitle="subtitle" :density="density">
               <!-- Contenido que meta el padre -->
@@ -274,6 +274,8 @@ const onLeave = (el: any, done: () => void) => {
   color: var(--md-sys-color-on-surface-variant);
   transition: background-color 0.15s ease, color 0.15s ease;
   z-index: 10;
+  box-shadow: none; /* Reset global button shadow */
+  padding: 0;
 }
 
 .g-modal-close-btn:hover {

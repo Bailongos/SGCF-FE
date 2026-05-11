@@ -64,13 +64,13 @@
             </div>
 
             <div class="g-calendar-header-right">
-              <GoogleButton
-                variant="text"
-                size="sm"
+              <button
+                type="button"
+                class="g-today-btn"
                 @click.stop="goToToday"
               >
                 Hoy
-              </GoogleButton>
+              </button>
 
               <button
                 type="button"
@@ -455,9 +455,9 @@ onBeforeUnmount(() => {
 
 /* Campo principal */
 .g-date-picker-field {
-  border-radius: 999px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  background-color: var(--md-sys-color-surface);
+  border-radius: 4px 4px 0 0;
+  border-bottom: 2px solid var(--md-sys-color-outline);
+  background-color: var(--md-sys-color-surface-variant);
   display: flex;
   align-items: center;
   padding-right: 0.4rem;
@@ -467,9 +467,12 @@ onBeforeUnmount(() => {
     background-color 0.15s ease;
 }
 
+.g-date-picker-field:hover {
+  background-color: var(--md-sys-color-surface-container);
+}
+
 .g-date-picker-field:focus-within {
-  border-color: var(--g-date-picker-focus, var(--md-sys-color-primary));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-sys-color-primary), transparent 80%);
+  border-bottom-color: var(--g-date-picker-focus, var(--md-sys-color-primary));
 }
 
 .g-date-picker-input {
@@ -478,7 +481,6 @@ onBeforeUnmount(() => {
   outline: none;
   background: transparent;
   padding: 0.4rem 0.7rem;
-  border-radius: 999px;
   font-family: inherit;
   font-size: 0.9rem;
   color: var(--md-sys-color-on-surface);
@@ -515,6 +517,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: none; /* Reset global button shadow */
+  transition: background-color 0.15s ease;
 }
 
 .g-date-picker-icon-btn .material-symbols-outlined {
@@ -556,15 +560,15 @@ onBeforeUnmount(() => {
 /* Calendario interno */
 .g-calendar {
   background: var(--md-sys-color-surface);
-  border-radius: 12px;
-  padding: 0.9rem 1rem 1rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--md-sys-color-outline-variant);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   color: var(--md-sys-color-on-surface);
-  min-width: 260px;
+  min-width: 280px;
 }
 
 .g-calendar--dense {
@@ -576,19 +580,40 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--md-sys-color-surface-container);
+  margin-bottom: 0.25rem;
 }
 
 .g-calendar-month-label {
-  font-size: 1.05rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   text-transform: capitalize;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-calendar-header-right {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.15rem;
+}
+
+.g-today-btn {
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  box-shadow: none;
+  transition: background-color 0.15s ease;
+}
+
+.g-today-btn:hover {
+  background-color: var(--md-sys-color-primary-container);
 }
 
 /* Icon button */
@@ -596,11 +621,13 @@ onBeforeUnmount(() => {
   border: none;
   background: transparent;
   border-radius: 999px;
-  padding: 0.15rem 0.25rem;
+  padding: 0.2rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: none;
+  transition: background-color 0.15s ease;
 }
 
 .g-icon-button .material-symbols-outlined {
@@ -631,9 +658,9 @@ onBeforeUnmount(() => {
 .g-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-auto-rows: 2.2rem;
-  margin-top: 0.15rem;
-  gap: 0.1rem;
+  grid-auto-rows: 2.4rem;
+  margin-top: 0.25rem;
+  gap: 0.2rem;
 }
 
 .g-calendar--dense .g-calendar-grid {
@@ -654,6 +681,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   outline: none;
+  box-shadow: none; /* Reset global button shadow */
+  color: var(--md-sys-color-on-surface);
   transition:
     background-color 0.12s ease,
     transform 0.08s ease;
@@ -661,6 +690,7 @@ onBeforeUnmount(() => {
 
 .g-calendar-day-number {
   font-size: 0.82rem;
+  z-index: 1;
 }
 
 /* Estados visuales */
@@ -675,15 +705,16 @@ onBeforeUnmount(() => {
 
 .g-calendar-day--selected {
   background: var(--md-sys-color-primary);
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.4);
 }
 
 .g-calendar-day--selected .g-calendar-day-number {
   color: var(--md-sys-color-on-primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.g-calendar-day:hover {
-  background: var(--md-sys-color-surface-container);
+.g-calendar-day:hover:not(.g-calendar-day--selected) {
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .g-calendar-day--selected:hover {

@@ -18,6 +18,7 @@ interface AuthUser {
   rol_nombre?: string;
   activo?: boolean;
   estado?: string | null;
+  permissions?: string[]; // Permisos devueltos por el backend
 }
 
 function normalizeRoleName(role: string | null | undefined): string {
@@ -99,6 +100,7 @@ function roleNameById(idRol: number | string | null | undefined): string {
   if (id === 1) return 'administrador';
   if (id === 2) return 'coordinador';
   if (id === 3) return 'caja';
+  if (id === 4) return 'pendiente';
   if (id === 6) return 'sin rol';
   return '';
 }
@@ -143,7 +145,13 @@ export const useAuthStore = defineStore('auth', () => {
   const isUserActive = computed(() => userStatus.value === 'activo');
 
   const userCareerId = computed<number | null>(() => readCareerId(user.value));
-  const permissionSet = computed(() => getRolePermissionSet(currentRole.value));
+  const permissions = computed(() => new Set(user.value?.permissions ?? []));
+  const permissionSet = computed(() => {
+    if (permissions.value.size > 0) {
+      return permissions.value;
+    }
+    return getRolePermissionSet(currentRole.value);
+  });
 
   function can(permission: PermissionKey | string | null | undefined): boolean {
     if (!isUserActive.value) return false;
@@ -233,6 +241,7 @@ export const useAuthStore = defineStore('auth', () => {
     userStatus,
     isUserActive,
     userCareerId,
+    permissions,
     can,
     canAny,
     hasAnyRole,

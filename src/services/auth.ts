@@ -10,6 +10,7 @@ export interface AuthUserResponse {
   rol_nombre?: string;
   activo?: boolean;
   estado?: string | null;
+  permissions?: string[]; // Permisos retornados por el backend
 }
 
 export interface LoginResponse {

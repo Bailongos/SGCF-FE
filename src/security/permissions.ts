@@ -24,16 +24,35 @@ type RolePermissionPreset = PermissionKey[] | '*';
 
 const ROLE_PERMISSIONS: Record<string, RolePermissionPreset> = {
   administrador: '*',
-  coordinador: '*',
-  caja: '*',
-  'sin rol': '*',
-  pendiente: '*',
-  '': '*',
+  coordinador: [
+    PERMISSIONS.VIEW_INICIO,
+    PERMISSIONS.VIEW_ALUMNOS,
+    PERMISSIONS.VIEW_DASHBOARD_ALUMNOS,
+    PERMISSIONS.VIEW_CUENTAS,
+    PERMISSIONS.VIEW_OBSERVACIONES,
+    PERMISSIONS.ACTION_ALUMNO_CREATE,
+    PERMISSIONS.ACTION_CUENTA_CREATE,
+    PERMISSIONS.FILTER_CARRERA_CHANGE,
+  ],
+  caja: [
+    PERMISSIONS.VIEW_INICIO,
+    PERMISSIONS.VIEW_CUENTAS,
+    PERMISSIONS.VIEW_CONCEPTOS,
+    PERMISSIONS.VIEW_METODOS_PAGO,
+    PERMISSIONS.ACTION_CUENTA_CREATE,
+  ],
+  pendiente: [
+    PERMISSIONS.VIEW_INICIO,
+  ],
+  'sin rol': [
+    PERMISSIONS.VIEW_INICIO,
+  ],
+  '': [],
 };
 
 export function getRolePermissionSet(roleName: string): Set<string> {
   const normalizedRole = String(roleName ?? '').trim().toLowerCase();
-  const preset = ROLE_PERMISSIONS[normalizedRole] ?? '*';
+  const preset = ROLE_PERMISSIONS[normalizedRole] ?? [];
 
   if (preset === '*') {
     return new Set(['*', ...ALL_PERMISSIONS]);
