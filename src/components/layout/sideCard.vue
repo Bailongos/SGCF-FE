@@ -3,7 +3,6 @@
     `g-section-card--${densityClass}`,
     { 'g-section-card--clickable': clickable }
   ]" @click="handleClick">
-    <!-- Header -->
     <header v-if="hasHeader" class="g-section-card__header">
       <div class="g-section-card__title-wrap">
         <span v-if="icon" class="material-symbols-outlined g-section-card__icon">
@@ -20,18 +19,15 @@
         </div>
       </div>
 
-      <!-- Acciones extra en header -->
       <div v-if="slots['header-extra']" class="g-section-card__header-extra">
         <slot name="header-extra" />
       </div>
     </header>
 
-    <!-- Body -->
     <div class="g-section-card__body">
       <slot />
     </div>
 
-    <!-- Footer -->
     <footer v-if="slots.footer" class="g-section-card__footer">
       <slot name="footer" />
     </footer>
@@ -46,7 +42,7 @@ type Density = 'comfortable' | 'cozy' | 'compact';
 const props = defineProps<{
   title?: string;
   subtitle?: string;
-  icon?: string;        // material icon, ej: "school"
+  icon?: string;
   clickable?: boolean;
   density?: Density;
 }>();
@@ -80,75 +76,56 @@ function handleClick() {
   position: relative;
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
+  border-radius: 8px;
   background: var(--md-sys-color-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
-  animation: g-section-card-enter 0.24s ease-out;
-  transform-origin: top center;
-  overflow: visible;
-  /* Changed from hidden to avoid clipping shadows/focus */
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--md-sys-color-outline);
+  transition: box-shadow 0.15s ease;
 }
 
-/* densidad */
+.g-section-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
 .g-section-card--comfortable {
-  padding: 1.5rem 1.75rem;
-  /* Increased for better breathing room */
+  padding: 1.25rem 1.5rem;
 }
 
 .g-section-card--cozy {
-  padding: 1.25rem 1.4rem;
+  padding: 1rem 1.25rem;
 }
 
 .g-section-card--compact {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.9rem;
 }
 
-/* clickable */
 .g-section-card--clickable {
   cursor: pointer;
-  transition:
-    box-shadow 0.16s ease,
-    transform 0.16s ease,
-    background-color 0.16s ease,
-    border-color 0.16s ease;
+  transition: box-shadow 0.15s ease;
 }
 
 .g-section-card--clickable:hover {
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
-  transform: translateY(-1px);
-  background-color: var(--md-sys-color-surface-container);
-  border-color: var(--md-sys-color-primary);
+  box-shadow: var(--shadow-lg);
 }
 
-/* Header */
 .g-section-card__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
 }
 
 .g-section-card__title-wrap {
   display: flex;
   align-items: flex-start;
-  gap: 0.7rem;
+  gap: 0.6rem;
 }
 
 .g-section-card__icon {
-  font-variation-settings:
-    'FILL' 0,
-    'wght' 500,
-    'GRAD' 0,
-    'opsz' 24;
-  font-size: 24px;
+  font-size: 20px;
   color: var(--md-sys-color-primary);
-  background: var(--md-sys-color-primary-container);
-  border-radius: 12px;
-  padding: 0.35rem;
+  padding: 0.3rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -156,14 +133,14 @@ function handleClick() {
 
 .g-section-card__title {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--md-sys-color-on-surface);
 }
 
 .g-section-card__subtitle {
-  margin: 0.15rem 0 0;
-  font-size: 0.86rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
   color: var(--md-sys-color-on-surface-variant);
 }
 
@@ -173,43 +150,26 @@ function handleClick() {
   gap: 0.35rem;
 }
 
-/* Body */
 .g-section-card__body {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-/* Footer */
 .g-section-card__footer {
-  margin-top: 0.9rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--md-sys-color-outline-variant);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--md-sys-color-outline);
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
 }
 
-/* Animación entrada */
-@keyframes g-section-card-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px) scale(0.99);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Responsive */
 @media (max-width: 768px) {
-
   .g-section-card--comfortable,
   .g-section-card--cozy,
   .g-section-card--compact {
-    padding: 1.1rem 1.25rem;
+    padding: 1rem 1.1rem;
   }
 
   .g-section-card__header {

@@ -26,7 +26,7 @@
       @click.stop="handleClose"
       aria-label="Quitar etiqueta"
     >
-      ✕
+      <span class="material-symbols-outlined">close</span>
     </button>
   </span>
 </template>
@@ -39,10 +39,10 @@ type TagVariant = 'soft' | 'solid' | 'outline';
 
 const props = defineProps<{
   label?: string;
-  color?: string;          // color principal (borde / fondo)
+  color?: string;
   size?: TagSize;
   variant?: TagVariant;
-  icon?: string;           // nombre de material symbol, ej: "label", "sell"
+  icon?: string;
   closable?: boolean;
 }>();
 
@@ -62,13 +62,11 @@ const variantResolved = computed<TagVariant>(
   () => props.variant ?? 'soft',
 );
 
-// Color base (Google blue por defecto)
 const baseColor = computed(
-  () => props.color ?? '#1a73e8',
+  () => props.color ?? 'var(--md-sys-color-primary)',
 );
 
 const tagStyle = computed(() => {
-  // Usamos CSS vars para que el mismo estilo sirva para todas las variantes
   return {
     '--g-tag-color': baseColor.value,
   } as Record<string, string>;
@@ -81,58 +79,51 @@ function handleClose() {
 
 <style scoped>
 .g-tag {
-  --g-tag-color: #1a73e8;
+  --g-tag-color: var(--md-sys-color-primary);
 
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
 
-  border-radius: 999px;
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
+  border-radius: 4px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 
   border: 1px solid transparent;
-  padding: 0.15rem 0.6rem;
-  font-size: 0.78rem;
-  line-height: 1.2;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.3;
 
-  color: #202124;
-  background-color: #f1f3f4;
+  color: var(--md-sys-color-on-surface);
+  background-color: var(--md-sys-color-surface-container);
 
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.08s ease;
+  transition: background-color 0.12s ease;
 }
 
-/* Tamaños */
 .g-tag--sm {
-  padding: 0.1rem 0.5rem;
-  font-size: 0.7rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.68rem;
 }
 
 .g-tag--md {
-  padding: 0.15rem 0.6rem;
-  font-size: 0.78rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
 }
 
 .g-tag--lg {
-  padding: 0.18rem 0.75rem;
-  font-size: 0.82rem;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.8rem;
 }
 
-/* Variantes */
 .g-tag--soft {
-  background-color: rgba(26, 115, 232, 0.08);
+  background-color: color-mix(in srgb, var(--g-tag-color), transparent 90%);
   border-color: transparent;
-  color: #1a73e8;
+  color: var(--g-tag-color);
 }
 
 .g-tag--solid {
   background-color: var(--g-tag-color);
   border-color: var(--g-tag-color);
-  color: #ffffff;
+  color: var(--md-sys-color-on-primary);
 }
 
 .g-tag--outline {
@@ -141,46 +132,37 @@ function handleClose() {
   color: var(--g-tag-color);
 }
 
-/* Icono */
 .g-tag-icon {
-  font-size: 1rem;
+  font-size: 0.9rem;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  font-variation-settings:
-    'FILL' 1,
-    'wght' 500,
-    'GRAD' 0,
-    'opsz' 20;
 }
 
-/* Label */
 .g-tag-label {
   white-space: nowrap;
 }
 
-/* Cierre */
 .g-tag-close {
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   line-height: 1;
   padding: 0;
-  margin-left: 0.1rem;
-  border-radius: 999px;
+  margin-left: 0.05rem;
+  border-radius: 4px;
   color: inherit;
+  display: inline-flex;
+  align-items: center;
+}
+
+.g-tag-close .material-symbols-outlined {
+  font-size: 14px;
 }
 
 .g-tag--closable .g-tag-close:hover {
-  background-color: rgba(60, 64, 67, 0.08);
-}
-
-/* Pequeña animación al hover */
-.g-tag:hover {
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.2);
-  transform: translateY(-0.5px);
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface), transparent 92%);
 }
 </style>

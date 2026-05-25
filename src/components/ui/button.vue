@@ -27,7 +27,7 @@
 import { computed } from 'vue';
 
 type Size = 'sm' | 'md' | 'lg';
-type Variant = 'filled' | 'text' | 'outlined' | 'tonal';
+type Variant = 'filled' | 'text' | 'outlined';
 type NativeButtonType = 'button' | 'submit' | 'reset';
 
 const props = defineProps<{
@@ -46,7 +46,7 @@ const emit = defineEmits<{
 
 const size = computed<Size>(() => props.size ?? 'md');
 const variant = computed<Variant>(() => props.variant ?? 'filled');
-const color = computed(() => props.color ?? '#1a73e8');
+const color = computed(() => props.color ?? 'var(--md-sys-color-primary)');
 const type = computed<NativeButtonType>(() => props.type ?? 'button');
 const loading = computed(() => props.loading ?? false);
 const isDisabled = computed(() => (props.disabled ?? false) || loading.value);
@@ -68,122 +68,82 @@ function handleClick(event: MouseEvent) {
   gap: 0.35rem;
 
   border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0.45rem 1.2rem;
-  min-width: 72px;
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  min-width: 64px;
 
-  background-color: var(--g-btn-bg);
+  background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
 
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  font-weight: 500;
-  font-size: 0.9rem;
-
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  font-weight: 500;
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  font-size: 0.875rem;
 
   cursor: pointer;
   outline: none;
+  position: relative;
 
-  /* Animaciones googlescas */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  transition:
-    transform 0.08s ease-out,
-    box-shadow 0.12s ease-out,
-    background-color 0.15s ease-out,
-    filter 0.15s ease-out,
-    opacity 0.15s ease-out;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.g-btn:hover:not(.g-btn--disabled) {
+  filter: brightness(1.08);
+}
+
+.g-btn:active:not(.g-btn--disabled) {
+  filter: brightness(0.95);
+  transform: scale(0.98);
+}
+
+/* Variants */
 .g-btn--filled {
-  background-color: var(--g-btn-bg);
+  background: var(--g-btn-bg);
   color: var(--md-sys-color-on-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  border-color: transparent;
+}
+
+.g-btn--filled:hover:not(.g-btn--disabled) {
+  filter: brightness(1.08);
 }
 
 .g-btn--text {
-  background-color: transparent;
+  background: transparent;
   color: var(--g-btn-color);
-  box-shadow: none;
-}
-
-.g-btn--outlined {
-  background-color: transparent;
-  color: var(--g-btn-color);
-  border-color: var(--md-sys-color-outline-variant);
-  box-shadow: none;
-}
-
-.g-btn--tonal {
-  background-color: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  box-shadow: none;
-}
-
-.g-btn--tonal:hover:not(.g-btn--disabled) {
-  filter: brightness(0.95);
-}
-
-.g-btn--tonal {
-  background-color: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  box-shadow: none;
-}
-
-.g-btn--tonal:hover:not(.g-btn--disabled) {
-  background-color: color-mix(in srgb, var(--md-sys-color-secondary-container), black 5%);
-}
-
-/* Tamaños */
-.g-btn--sm {
-  padding: 0.3rem 0.9rem;
-  font-size: 0.8rem;
-}
-
-.g-btn--md {
-  padding: 0.45rem 1.2rem;
-  font-size: 0.9rem;
-}
-
-.g-btn--lg {
-  padding: 0.6rem 1.5rem;
-  font-size: 1rem;
-}
-
-/* Hover: un poquito más oscuro */
-.g-btn:hover:not(.g-btn--disabled) {
-  filter: brightness(0.95);
-  box-shadow: 0 2px 6px rgba(60, 64, 67, 0.35);
+  border-color: transparent;
 }
 
 .g-btn--text:hover:not(.g-btn--disabled) {
+  background: color-mix(in srgb, var(--g-btn-color), transparent 92%);
   filter: none;
-  background-color: color-mix(in srgb, var(--g-btn-color), transparent 92%);
-  box-shadow: none;
+}
+
+.g-btn--outlined {
+  background: transparent;
+  color: var(--g-btn-color);
+  border-color: var(--md-sys-color-outline);
 }
 
 .g-btn--outlined:hover:not(.g-btn--disabled) {
-  filter: none;
-  background-color: color-mix(in srgb, var(--g-btn-color), transparent 92%);
+  background: color-mix(in srgb, var(--g-btn-color), transparent 95%);
   border-color: var(--g-btn-color);
-  box-shadow: none;
+  filter: none;
 }
 
-/* Animación de click */
-.g-btn:active:not(.g-btn--disabled) {
-  transform: translateY(1px) scale(0.98);
-  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+.g-btn--sm { padding: 0.25rem 0.75rem; font-size: 0.8rem; }
+.g-btn--md { padding: 0.4rem 1rem; font-size: 0.875rem; }
+.g-btn--lg { padding: 0.55rem 1.35rem; font-size: 1rem; }
+
+@media (max-width: 600px) {
+  .g-btn--sm { padding: 0.3rem 0.85rem; font-size: 0.85rem; min-height: 36px; }
+  .g-btn--md { padding: 0.45rem 1.1rem; font-size: 0.9rem; min-height: 40px; }
+  .g-btn--lg { padding: 0.6rem 1.4rem; font-size: 1rem; min-height: 44px; }
 }
 
-/* Disabled */
 .g-btn--disabled {
-  opacity: 0.6;
-  cursor: default;
-  box-shadow: none;
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: none !important;
+  transform: none !important;
 }
 
 .g-btn-spinner {
@@ -192,12 +152,10 @@ function handleClick(event: MouseEvent) {
   border-radius: 50%;
   border: 2px solid currentColor;
   border-right-color: transparent;
-  animation: g-btn-spin 0.75s linear infinite;
+  animation: g-btn-spin 0.6s linear infinite;
 }
 
 @keyframes g-btn-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 </style>

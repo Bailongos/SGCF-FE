@@ -27,7 +27,7 @@
         <div class="g-dialog-actions">
           <button
             type="button"
-            class="g-btn g-btn-text"
+            class="g-dialog-btn g-dialog-btn--text"
             @click="handleCancel"
           >
             {{ cancelTextToShow }}
@@ -35,7 +35,7 @@
 
           <button
             type="button"
-            class="g-btn g-btn-primary"
+            class="g-dialog-btn g-dialog-btn--primary"
             @click="handleConfirm"
           >
             {{ confirmTextToShow }}
@@ -49,7 +49,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 
-// 👇 ahora acepta 'error' además de 'default' y 'danger'
 type DialogType = 'default' | 'danger' | 'error';
 
 const props = defineProps<{
@@ -89,7 +88,6 @@ const cancelTextToShow = computed(
 );
 
 const iconName = computed(() => {
-  // tratamos 'error' igual que 'danger'
   if (dialogType.value === 'danger' || dialogType.value === 'error') {
     return 'warning';
   }
@@ -141,7 +139,7 @@ onBeforeUnmount(() => {
 .g-dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(32, 33, 36, 0.35);
+  background: var(--md-sys-color-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -151,52 +149,43 @@ onBeforeUnmount(() => {
 .g-dialog {
   width: 100%;
   max-width: 420px;
-  background: #ffffff;
-  border-radius: 16px;
+  background: var(--md-sys-color-surface);
+  border-radius: 8px;
   padding: 1rem 1.15rem 0.85rem;
-  box-shadow:
-    0 2px 4px rgba(60, 64, 67, 0.3),
-    0 8px 16px rgba(60, 64, 67, 0.15);
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--md-sys-color-outline);
 }
 
-/* variantes */
 .g-dialog--default .g-dialog-icon {
-  color: #1a73e8;
+  color: var(--md-sys-color-primary);
 }
 
 .g-dialog--danger .g-dialog-icon,
 .g-dialog--error .g-dialog-icon {
-  color: #d93025;
+  color: var(--md-sys-color-error);
 }
 
 .g-dialog-header {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .g-dialog-icon {
-  font-variation-settings:
-    'FILL' 1,
-    'wght' 500,
-    'GRAD' 0,
-    'opsz' 24;
-  font-size: 24px;
+  font-size: 22px;
   margin-top: 0.1rem;
 }
 
 .g-dialog-title {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #202124;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
   margin-bottom: 0.1rem;
 }
 
 .g-dialog-subtitle {
-  font-size: 0.85rem;
-  color: #5f6368;
+  font-size: 0.82rem;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-dialog-actions {
@@ -206,56 +195,42 @@ onBeforeUnmount(() => {
   margin-top: 1rem;
 }
 
-/* Botones */
-.g-btn {
-  border-radius: 999px;
-  border: none;
+.g-dialog-btn {
+  border-radius: 4px;
+  border: 1px solid transparent;
   font-size: 0.85rem;
-  padding: 0.4rem 0.9rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-family: inherit;
-  transition:
-    background-color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.08s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-.g-btn-primary {
-  background-color: #1a73e8;
-  color: #ffffff;
+.g-dialog-btn--primary {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-color: var(--md-sys-color-primary);
 }
 
-.g-btn-primary:hover {
-  background-color: #185abc;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
+.g-dialog-btn--primary:hover {
+  filter: brightness(1.08);
 }
 
-.g-btn-primary:active {
-  transform: scale(0.97);
-}
-
-.g-btn-text {
+.g-dialog-btn--text {
   background: transparent;
-  color: #1a73e8;
+  color: var(--md-sys-color-primary);
 }
 
-.g-btn-text:hover {
-  background-color: rgba(26, 115, 232, 0.08);
+.g-dialog-btn--text:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary), transparent 92%);
 }
 
-.g-btn-text:active {
-  transform: scale(0.97);
-}
-
-/* Animación */
 .g-dialog-fade-enter-active,
 .g-dialog-fade-leave-active {
-  transition:
-    opacity 0.18s ease-out,
-    transform 0.18s ease-out;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .g-dialog-fade-enter-from,

@@ -1,7 +1,5 @@
-<!-- src/components/ui/table.vue -->
 <template>
   <SectionCard class="g-table-card" :icon="icon" :title="titleToShow" :subtitle="subtitleToShow" density="comfortable">
-    <!-- Header derecho: search + recargar -->
     <template #header-extra>
       <div class="g-table-header-right">
         <GoogleInput v-if="showSearch" v-model="localSearch" class="g-table-search-input" placeholder="Buscar..."
@@ -14,20 +12,6 @@
       </div>
     </template>
 
-    <!-- Mensaje de éxito tipo toast interno -->
-    <transition name="g-toast-fade">
-      <div v-if="successMessage" class="g-table-toast">
-        <span class="material-symbols-outlined g-table-toast-icon">
-          check_circle
-        </span>
-        <span>{{ successMessage }}</span>
-      </div>
-    </transition>
-
-    <!-- Error -->
-    <p v-if="error" class="g-table-error">{{ error }}</p>
-
-    <!-- Tabla -->
     <div v-if="filteredRows.length" class="g-table-wrapper">
       <table class="g-table">
         <thead>
@@ -64,7 +48,6 @@
       </table>
     </div>
 
-    <!-- Vacío -->
     <p v-else class="g-table-empty">
       {{ emptyMessageToShow }}
     </p>
@@ -81,12 +64,12 @@ import GoogleButton from '../ui/button.vue';
 export type Align = 'left' | 'center' | 'right';
 
 export interface TableColumn<T = any> {
-  key: string;                    // nombre de la propiedad en la fila
-  label: string;                  // encabezado
-  width?: string;                 // ej. '90px'
-  align?: Align;                  // 'left' | 'center' | 'right'
-  badge?: boolean;                // renderizar valor como badge
-  formatter?: (row: T) => any;    // función para formatear el valor
+  key: string;
+  label: string;
+  width?: string;
+  align?: Align;
+  badge?: boolean;
+  formatter?: (row: T) => any;
 }
 
 const props = withDefaults(defineProps<{
@@ -95,13 +78,10 @@ const props = withDefaults(defineProps<{
   rowKey: string;
 
   loading?: boolean;
-  error?: string | null;
 
-  // búsqueda
   search?: string;
   searchKeys?: string[];
 
-  // layout
   title?: string;
   subtitle?: string;
   icon?: string;
@@ -110,13 +90,11 @@ const props = withDefaults(defineProps<{
   showSearch?: boolean;
   useDefaultActions?: boolean;
 
-  successMessage?: string | null;
   emptyMessage?: string;
 }>(), {
   rows: () => [],
   columns: () => [],
   loading: false,
-  error: null,
   search: '',
   searchKeys: () => [],
   title: '',
@@ -125,7 +103,6 @@ const props = withDefaults(defineProps<{
   showReload: true,
   showSearch: true,
   useDefaultActions: true,
-  successMessage: null,
   emptyMessage: 'No hay registros para mostrar.',
 });
 
@@ -144,19 +121,16 @@ const emptyMessageToShow = computed(
   () => props.emptyMessage || 'No hay registros para mostrar.',
 );
 
-// v-model:search
 const localSearch = computed({
   get: () => props.search ?? '',
   set: (val: string) => emit('update:search', val),
 });
 
-// key de la fila
 function getRowKey(row: any): string | number {
   const k = props.rowKey;
   return (row && row[k as keyof typeof row]) as any;
 }
 
-// Formatear celda
 function formatCell(row: any, col: TableColumn): any {
   if (col.formatter) {
     return col.formatter(row);
@@ -168,7 +142,6 @@ function formatCell(row: any, col: TableColumn): any {
   return value;
 }
 
-// Filtrado por search
 const filteredRows = computed(() => {
   const term = localSearch.value.toLowerCase().trim();
   if (!term) return props.rows;
@@ -177,7 +150,6 @@ const filteredRows = computed(() => {
 
   return props.rows.filter((row) => {
     if (!keys) {
-      // buscar en todas las props string
       return Object.values(row).some((v) =>
         String(v ?? '')
           .toLowerCase()
@@ -199,8 +171,6 @@ const filteredRows = computed(() => {
   width: 100%;
 }
 
-/* Header */
-
 .g-table-header-right {
   display: flex;
   align-items: center;
@@ -211,12 +181,10 @@ const filteredRows = computed(() => {
   min-width: 220px;
 }
 
-/* Tabla */
-
 .g-table-wrapper {
   margin-top: 0.75rem;
-  border-radius: 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 4px;
+  border: 1px solid var(--md-sys-color-outline);
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -230,7 +198,7 @@ const filteredRows = computed(() => {
 .g-table-header-cell,
 .g-table-cell {
   padding: 0.55rem 0.75rem;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
 .g-table thead {
@@ -239,29 +207,40 @@ const filteredRows = computed(() => {
 
 .g-table-header-cell {
   text-align: left;
-  font-weight: 500;
-  color: var(--md-sys-color-on-surface-variant);
-  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  border-bottom: 2px solid var(--md-sys-color-outline);
+  font-size: 0.78rem;
 }
 
 .g-table-cell {
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
   color: var(--md-sys-color-on-surface);
+  transition: background 0.12s ease;
+}
+
+.g-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.g-table tbody tr:hover {
+  background: var(--md-sys-color-surface-variant);
+}
+
+.g-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .g-table-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 0.12rem 0.55rem;
-  border: 1px solid var(--md-sys-color-primary-container);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
   background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  font-size: 0.75rem;
-  font-weight: 500;
+  color: var(--md-sys-color-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
 }
-
-/* alineación */
 
 .g-table-header-cell--center,
 .g-table-cell--center {
@@ -273,95 +252,100 @@ const filteredRows = computed(() => {
   text-align: right;
 }
 
-/* col de acciones */
-
 .g-table-header-actions {
-  width: 90px;
+  width: 80px;
 }
 
 .g-table-cell-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
-
-/* Icon buttons */
 
 .g-icon-button {
   width: 32px;
   height: 32px;
-  border: 1px solid var(--md-sys-color-primary-container);
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-primary);
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0;
-  font-size: 1rem;
+  font-size: 1.1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .g-icon-button:hover {
-  background: color-mix(in srgb, var(--md-sys-color-primary), transparent 85%);
-  border-color: var(--md-sys-color-primary);
-}
-
-.g-icon-button--danger {
-  border-color: var(--md-sys-color-error);
-  background: color-mix(in srgb, var(--md-sys-color-error), transparent 85%);
-  color: var(--md-sys-color-error);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-primary);
 }
 
 .g-icon-button--danger:hover {
-  background: color-mix(in srgb, var(--md-sys-color-error), transparent 75%);
-  border-color: var(--md-sys-color-error);
-}
-
-/* Estados */
-
-.g-table-error {
+  background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-error);
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
 }
 
 .g-table-empty {
   margin-top: 0.75rem;
   font-size: 0.9rem;
   color: var(--md-sys-color-on-surface-variant);
+  text-align: center;
+  padding: 2rem 0;
 }
 
-/* Toast interno */
+@media (max-width: 768px) {
+  .g-table-header-cell,
+  .g-table-cell {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.78rem;
+  }
 
-.g-table-toast {
-  margin-top: 0.5rem;
-  margin-bottom: 0.25rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  background: var(--md-sys-color-success-container);
-  color: var(--md-sys-color-success);
+  .g-table-header-cell {
+    font-size: 0.72rem;
+  }
+
+  .g-table-search-input {
+    min-width: 140px;
+  }
+
+  .g-icon-button {
+    width: 36px;
+    height: 36px;
+    font-size: 1.2rem;
+  }
 }
 
-.g-table-toast-icon {
-  font-size: 18px;
-}
+@media (max-width: 480px) {
+  .g-table-header-cell,
+  .g-table-cell {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.72rem;
+  }
 
-/* animación toast */
+  .g-table-header-cell {
+    font-size: 0.65rem;
+  }
 
-.g-toast-fade-enter-active,
-.g-toast-fade-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
-}
+  .g-table-badge {
+    font-size: 0.62rem;
+    padding: 0.08rem 0.35rem;
+  }
 
-.g-toast-fade-enter-from,
-.g-toast-fade-leave-to {
-  opacity: 0;
-  transform: translateY(4px);
+  .g-table-header-actions {
+    width: 60px;
+  }
+
+  .g-table-cell-actions {
+    gap: 0.1rem;
+  }
+
+  .g-icon-button {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
 }
 </style>

@@ -76,7 +76,7 @@ const props = defineProps<{
   hint?: string;
   validation?: Validation;
   errorMessage?: string;
-  rows?: number; // Para textarea
+  rows?: number;
 }>();
 
 const emit = defineEmits<{
@@ -87,7 +87,7 @@ const emit = defineEmits<{
 
 const type = computed<InputType>(() => props.type ?? 'text');
 const size = computed<Size>(() => props.size ?? 'md');
-const color = computed(() => props.color ?? '#1a73e8');
+const color = computed(() => props.color ?? 'var(--md-sys-color-primary)');
 const disabled = computed(() => props.disabled ?? false);
 const validation = computed<Validation>(() => props.validation ?? 'none');
 const rows = computed(() => props.rows ?? 3);
@@ -157,45 +157,26 @@ function onFocus() {
 .g-input-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-}
-
-/* Tamaños */
-.g-input--sm .g-input {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-}
-
-.g-input--md .g-input {
-  padding: 0.4rem 0.7rem;
-  font-size: 0.9rem;
-}
-
-.g-input--lg .g-input {
-  padding: 0.55rem 0.9rem;
-  font-size: 1rem;
+  gap: 0.2rem;
 }
 
 .g-input-label {
-  font-size: 0.8rem;
-  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-input-container {
-  border-radius: 4px 4px 0 0; /* MD3 text field style */
-  border-bottom: 2px solid var(--md-sys-color-outline);
-  background-color: var(--md-sys-color-surface-variant);
+  border-radius: 4px;
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface);
   display: flex;
   align-items: center;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .g-input-container:hover {
-  background-color: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-input {
@@ -204,45 +185,66 @@ function onFocus() {
   border: none;
   outline: none;
   background: transparent;
-  padding: 0.4rem 0.7rem;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 4px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 0.875rem;
   color: var(--md-sys-color-on-surface);
 }
 
 .g-input::placeholder {
   color: var(--md-sys-color-on-surface-variant);
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
-.g-input--textarea .g-input-container {
-  border-radius: 8px;
+.g-input--sm .g-input {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.g-input--md .g-input {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.g-input--lg .g-input {
+  padding: 0.55rem 0.9rem;
+  font-size: 1rem;
 }
 
 .g-input--textarea .g-input {
-  min-height: 60px;
+  min-height: 80px;
   resize: vertical;
+  line-height: 1.5;
 }
 
 .g-input-container:focus-within {
-  border-bottom-color: var(--g-input-focus, var(--md-sys-color-primary));
+  border-color: var(--g-input-focus, var(--md-sys-color-primary));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary), transparent 85%);
 }
 
 .g-input--error .g-input-container {
   border-color: var(--md-sys-color-error);
-  box-shadow: 0 0 0 1px rgba(var(--md-sys-color-error-rgb), 0.12);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-error), transparent 85%);
 }
 
 .g-input-error {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--md-sys-color-error);
   margin: 0.1rem 0 0 0;
+  font-weight: 500;
 }
 
 .g-input-hint {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--md-sys-color-on-surface-variant);
   margin: 0.1rem 0 0 0;
+}
+
+@media (max-width: 600px) {
+  .g-input {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
+  }
 }
 </style>

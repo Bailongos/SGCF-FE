@@ -1,4 +1,3 @@
-<!-- src/components/ui/select.vue -->
 <template>
   <div
     class="g-select-wrapper"
@@ -40,7 +39,6 @@
       </span>
     </div>
 
-    <!-- Lista desplegable TELEPORTADA -->
     <Teleport to="body">
       <transition name="g-select-fade">
         <ul
@@ -133,19 +131,16 @@ const isOpen = ref(false);
 const search = ref('');
 const highlightedIndex = ref<number>(-1);
 
-// Posicion dinamica del dropdown
 const dropdownStyle = ref<{ top: string; left: string; width: string }>({
   top: '0',
   left: '0',
   width: '150px',
 });
 
-// Opción seleccionada (si el padre manda un valor)
 const selectedOption = computed(() =>
   props.options.find((o) => o.value === props.modelValue) ?? null,
 );
 
-// Sincroniza el texto mostrado con el valor seleccionado SOLO cuando está cerrado
 watch(
   () => [props.modelValue, props.options],
   ([model]) => {
@@ -160,7 +155,6 @@ watch(
   { immediate: true },
 );
 
-// Opciones filtradas
 const filteredOptions = computed(() => {
   const term = search.value.toLowerCase().trim();
   if (!term) return props.options;
@@ -169,15 +163,26 @@ const filteredOptions = computed(() => {
   );
 });
 
-// Calcular posición del dropdown
 function updateDropdownPosition() {
   if (!containerRef.value) return;
 
   const rect = containerRef.value.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const gap = 8;
+
+  let left = rect.left;
+  let width = rect.width;
+
+  if (left + width > vw - gap) {
+    const overflow = left + width - (vw - gap);
+    left = Math.max(gap, left - overflow);
+    width = Math.min(width, vw - left - gap);
+  }
+
   dropdownStyle.value = {
     top: `${rect.bottom + 2}px`,
-    left: `${rect.left}px`,
-    width: `${rect.width}px`,
+    left: `${left}px`,
+    width: `${width}px`,
   };
 }
 
@@ -191,19 +196,13 @@ function removeDropdownListeners() {
   window.removeEventListener('scroll', updateDropdownPosition, true);
 }
 
-// Abrir/cerrar
 function open() {
   if (disabled.value) return;
   isOpen.value = true;
-
-  // Al abrir limpiamos el texto para mostrar TODAS las opciones
   search.value = '';
-
   highlightedIndex.value = filteredOptions.value.findIndex(
     (o) => o.value === props.modelValue,
   );
-
-  // Calcular posición después de que se abre
   nextTick(() => {
     updateDropdownPosition();
     addDropdownListeners();
@@ -214,7 +213,6 @@ function close() {
   isOpen.value = false;
   highlightedIndex.value = -1;
   removeDropdownListeners();
-
   if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') {
     search.value = '';
   } else {
@@ -222,17 +220,11 @@ function close() {
   }
 }
 
-// Click en el contenedor
 function onContainerClick() {
   if (disabled.value) return;
-  if (!isOpen.value) {
-    open();
-  } else {
-    close();
-  }
+  if (!isOpen.value) open();
 }
 
-// Selección
 function selectOption(opt: SelectOption) {
   search.value = opt.label;
   emit('update:modelValue', opt.value);
@@ -240,7 +232,6 @@ function selectOption(opt: SelectOption) {
   close();
 }
 
-// Manejo de teclado
 function focusNext() {
   if (!isOpen.value) open();
   const max = filteredOptions.value.length - 1;
@@ -265,11 +256,9 @@ function focusPrev() {
 
 function selectHighlighted() {
   if (!isOpen.value) return;
-
   const idx = highlightedIndex.value;
   const opt = filteredOptions.value[idx];
   if (!opt) return;
-
   selectOption(opt);
 }
 
@@ -285,7 +274,6 @@ function onBlur() {
       emit('blur');
       return;
     }
-
     const active = document.activeElement;
     if (!active || !wrapperRef.value.contains(active)) {
       close();
@@ -294,7 +282,6 @@ function onBlur() {
   }, 100);
 }
 
-// Cerrar al hacer click fuera
 function handleClickOutside(e: MouseEvent) {
   if (!wrapperRef.value) return;
   if (!wrapperRef.value.contains(e.target as Node)) {
@@ -317,27 +304,27 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
+  gap: 0.2rem;
 }
 
 .g-select-label {
-  font-size: 0.8rem;
-  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-select-container {
-  border-radius: 8px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  background-color: var(--md-sys-color-surface);
+  border-radius: 4px;
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface);
   display: flex;
   align-items: center;
-  padding-right: 0.6rem;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    background-color 0.15s ease;
+  padding-right: 0.4rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.g-select-container:hover {
+  border-color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-select-input {
@@ -345,26 +332,26 @@ onBeforeUnmount(() => {
   border: none;
   outline: none;
   background: transparent;
-  padding: 0.4rem 0.7rem;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 4px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 0.875rem;
   color: var(--md-sys-color-on-surface);
 }
 
 .g-select-input::placeholder {
   color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.6;
 }
 
-/* Tamaños */
 .g-select--sm .g-select-input {
   padding: 0.3rem 0.6rem;
   font-size: 0.8rem;
 }
 
 .g-select--md .g-select-input {
-  padding: 0.4rem 0.7rem;
-  font-size: 0.9rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.875rem;
 }
 
 .g-select--lg .g-select-input {
@@ -372,19 +359,12 @@ onBeforeUnmount(() => {
   font-size: 1rem;
 }
 
-/* Focus */
 .g-select-container:focus-within {
   border-color: var(--g-select-focus, var(--md-sys-color-primary));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-sys-color-primary), transparent 85%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary), transparent 85%);
 }
 
-/* Icono */
 .g-select-icon {
-  font-variation-settings:
-    'FILL' 0,
-    'wght' 400,
-    'GRAD' 0,
-    'opsz' 24;
   font-size: 20px;
   color: var(--md-sys-color-on-surface-variant);
   transition: transform 0.15s ease;
@@ -394,47 +374,47 @@ onBeforeUnmount(() => {
   transform: rotate(180deg);
 }
 
-/* Lista teleportada con posicion fixed */
 .g-select-list {
   position: fixed;
   z-index: 9999;
-  padding: 0.25rem 0;
-  border-radius: 8px;
-  background: var(--md-sys-color-surface-container);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  max-height: 220px;
+  padding: 0.25rem;
+  border-radius: 4px;
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  box-shadow: var(--shadow-lg);
+  max-height: 240px;
   overflow-y: auto;
   list-style: none;
 }
 
 .g-select-option {
-  padding: 0.35rem 0.8rem;
-  font-size: 0.9rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
   color: var(--md-sys-color-on-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
+  border-radius: 4px;
+  transition: background 0.12s ease;
 }
 
 .g-select-option:hover {
-  background-color: var(--md-sys-color-surface-container-high);
+  background: var(--md-sys-color-surface-container);
 }
 
 .g-select-option--selected {
-  font-weight: 500;
-  background-color: var(--md-sys-color-primary-container);
+  font-weight: 600;
+  background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-primary);
 }
 
 .g-select-option--highlighted {
-  background-color: var(--md-sys-color-surface-container-highest);
+  background: var(--md-sys-color-surface-container-high);
 }
 
-/* Fade hacia abajo */
 .g-select-fade-enter-active,
 .g-select-fade-leave-active {
-  transition: opacity 0.12s ease, transform 0.12s ease;
+  transition: opacity 0.1s ease, transform 0.1s ease;
 }
 
 .g-select-fade-enter-from,
@@ -443,19 +423,33 @@ onBeforeUnmount(() => {
   transform: translateY(4px);
 }
 
-/* Disabled */
 .g-select--disabled .g-select-container {
-  background-color: var(--md-sys-color-surface-variant);
-  opacity: 0.6;
-  cursor: default;
+  background: var(--md-sys-color-surface-variant);
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .g-select--disabled .g-select-input {
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .g-select-error {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--md-sys-color-error);
+  margin: 0.1rem 0 0 0;
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .g-select-input {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .g-select-list {
+    max-width: calc(100vw - 16px);
+    left: 8px !important;
+    right: 8px !important;
+  }
 }
 </style>

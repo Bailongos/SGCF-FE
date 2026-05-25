@@ -1,6 +1,5 @@
-<!-- src/components/ui/chip.vue -->
 <template>
-  <span class="g-chip" :class="[`variant-${variant}`]">
+  <span class="g-chip" :class="[`variant-${variant}`, `g-chip--${size}`]">
     <slot></slot>
   </span>
 </template>
@@ -8,10 +7,12 @@
 <script setup lang="ts">
 interface Props {
   variant?: 'soft' | 'success' | 'warning' | 'error' | 'primary';
+  size?: 'sm' | 'md';
 }
 
 withDefaults(defineProps<Props>(), {
-  variant: 'soft'
+  variant: 'soft',
+  size: 'md',
 });
 </script>
 
@@ -19,11 +20,19 @@ withDefaults(defineProps<Props>(), {
 .g-chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 8px;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.85rem;
+  border-radius: 4px;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: none;
+}
+
+.g-chip--md {
+  padding: 0.2rem 0.65rem;
+  font-size: 0.82rem;
+}
+
+.g-chip--sm {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
 }
 
 .variant-soft {
@@ -32,14 +41,13 @@ withDefaults(defineProps<Props>(), {
 }
 
 .variant-success {
-  background: var(--md-sys-color-tertiary-container);
-  color: var(--md-sys-color-on-tertiary-container);
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-on-success-container);
 }
 
 .variant-warning {
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-on-error-container);
-  opacity: 0.9;
+  background: var(--md-sys-color-warning-container);
+  color: var(--md-sys-color-on-warning-container);
 }
 
 .variant-error {

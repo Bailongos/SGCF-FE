@@ -15,7 +15,7 @@
       </div>
 
       <button class="g-toast-close" @click="close" aria-label="Cerrar">
-        ✕
+        <span class="material-symbols-outlined">close</span>
       </button>
     </div>
   </transition>
@@ -31,7 +31,7 @@ const props = defineProps<{
   message?: string;
   title?: string;
   type?: ToastType;
-  duration?: number; // ms, ej. 3000 = 3s
+  duration?: number;
 }>();
 
 const emit = defineEmits<{
@@ -70,7 +70,7 @@ function clearTimer() {
 
 function startAutoHide() {
   clearTimer();
-  const dur = props.duration ?? 3000; // default 3s
+  const dur = props.duration ?? 3000;
   if (dur <= 0) return;
 
   timeoutId.value = window.setTimeout(() => {
@@ -104,59 +104,38 @@ onBeforeUnmount(() => {
 <style scoped>
 .g-toast {
   position: fixed;
-  right: 1.5rem;
-  bottom: 1.5rem;
+  right: 1rem;
+  bottom: 1rem;
   z-index: 9999;
 
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: 0.5rem;
 
   max-width: 320px;
-  padding: 0.75rem 0.9rem 0.75rem 0.8rem;
-  border-radius: 12px;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
 
-  background: #ffffff;
-  box-shadow:
-    0 2px 4px rgba(60, 64, 67, 0.3),
-    0 8px 16px rgba(60, 64, 67, 0.15);
-
-  font-family: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', sans-serif;
+  background: var(--md-sys-color-surface);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--md-sys-color-outline);
 }
 
-/* Colores por tipo */
-.g-toast--success {
-  border-left: 4px solid #34a853;
-}
-
-.g-toast--error {
-  border-left: 4px solid #d93025;
-}
-
-.g-toast--info {
-  border-left: 4px solid #1a73e8;
-}
-
-/* Icono */
 .g-toast-icon {
   margin-top: 0.05rem;
-  font-size: 22px;
-  color: #1a73e8;
-
-  font-variation-settings:
-    'FILL' 1,
-    'wght' 500,
-    'GRAD' 0,
-    'opsz' 24;
+  font-size: 20px;
 }
 
 .g-toast--success .g-toast-icon {
-  color: #34a853;
+  color: var(--md-sys-color-success);
 }
 
 .g-toast--error .g-toast-icon {
-  color: #d93025;
+  color: var(--md-sys-color-error);
+}
+
+.g-toast--info .g-toast-icon {
+  color: var(--md-sys-color-info);
 }
 
 .g-toast-content {
@@ -164,44 +143,46 @@ onBeforeUnmount(() => {
 }
 
 .g-toast-title {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: #202124;
-  margin-bottom: 0.1rem;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 0.05rem;
 }
 
 .g-toast-message {
-  font-size: 0.8rem;
-  color: #5f6368;
+  font-size: 0.78rem;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
-/* Botón cerrar */
 .g-toast-close {
   border: none;
   background: transparent;
   cursor: pointer;
-  color: #5f6368;
-  font-size: 0.9rem;
-  padding: 0.1rem 0.2rem;
-  border-radius: 999px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.8rem;
+  padding: 0.1rem;
+  border-radius: 4px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.g-toast-close .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .g-toast-close:hover {
-  background-color: rgba(95, 99, 104, 0.08);
+  background-color: var(--md-sys-color-surface-container);
 }
 
-/* Animación */
 .g-toast-slide-enter-active,
 .g-toast-slide-leave-active {
-  transition:
-    opacity 0.18s ease-out,
-    transform 0.18s ease-out;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .g-toast-slide-enter-from,
 .g-toast-slide-leave-to {
   opacity: 0;
-  transform: translateY(10px) scale(0.98);
+  transform: translateY(8px);
 }
 </style>

@@ -1,7 +1,6 @@
-<!-- src/components/modal/GoogleModal.vue -->
 <template>
   <Teleport to="body">
-    <transition :css="false" @before-enter="onBeforeEnter" @enter="onEnter" @leave="onLeave">
+    <transition name="g-modal-fade">
       <div v-if="visible" class="g-modal-overlay" @click="onOverlayClick">
         <div class="g-modal-dialog" :style="{ maxWidth }" @click.stop>
           <div class="g-modal-card-wrapper">
@@ -9,12 +8,9 @@
               <span class="material-symbols-outlined">close</span>
             </button>
             <SectionCard class="g-modal-card" :icon="icon" :title="title" :subtitle="subtitle" :density="density">
-              <!-- Contenido que meta el padre -->
               <slot />
 
-              <!-- Footer por defecto con botones -->
               <div v-if="showFooter" class="g-modal-footer">
-                <!-- Checkbox "Agregar otro" -->
                 <label v-if="showAddAnother" class="g-modal-add-another">
                   <input type="checkbox" v-model="addAnotherVal" />
                   <span>Agregar otro</span>
@@ -32,7 +28,6 @@
                 </div>
               </div>
 
-              <!-- Slot para footer personalizado completamente -->
               <div v-else-if="$slots.footer" class="g-modal-footer">
                 <slot name="footer" />
               </div>
@@ -45,9 +40,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue';
+import { computed, onMounted, onBeforeUnmount, useSlots } from 'vue';
 
-// UI que ya tienes
 import SectionCard from '../layout/sideCard.vue';
 import GoogleButton from '../ui/button.vue';
 
@@ -68,15 +62,11 @@ const props = withDefaults(defineProps<{
   confirmText?: string;
   cancelText?: string;
 
-  // Para bloquear cierre por overlay / ESC
   persistent?: boolean;
-  // Para deshabilitar cierre por overlay pero sí por ESC
   closeOnOverlay?: boolean;
 
-  // Para mostrar loading en el botón de confirmar
   confirmLoading?: boolean;
 
-  // Para permitir agregar múltiples (quedarse abierto)
   showAddAnother?: boolean;
   addAnother?: boolean;
 }>(), {
@@ -101,6 +91,8 @@ const emit = defineEmits<{
   (e: 'cancel'): void;
 }>();
 
+const slots = useSlots();
+
 const visible = computed({
   get: () => props.modelValue,
   set: (val: boolean) => emit('update:modelValue', val),
@@ -119,20 +111,17 @@ const cancelTextToShow = computed(
   () => props.cancelText ?? 'Cancelar',
 );
 
-// Cerrar modal
 function close() {
   if (props.persistent) return;
   visible.value = false;
   emit('close');
 }
 
-// Overlay
 function onOverlayClick() {
   if (!props.closeOnOverlay || props.persistent) return;
   close();
 }
 
-// ESC para cerrar
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && visible.value && !props.persistent) {
     close();
@@ -147,7 +136,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleKeydown);
 });
 
-// Botones
 function onConfirm() {
   emit('confirm');
 }
@@ -158,87 +146,26 @@ function onCancel() {
     close();
   }
 }
-
-const onBeforeEnter = (el: any) => {
-  el.style.opacity = 0;
-  const dialog = el.querySelector('.g-modal-dialog');
-  if (dialog) {
-    dialog.style.transform = 'translateY(20px) scale(0.95)';
-  }
-};
-
-const onEnter = (el: any, done: () => void) => {
-  const dialog = el.querySelector('.g-modal-dialog');
-
-  import('animejs').then(({ animate }) => {
-    // Overlay fade
-    animate(el, {
-      opacity: [0, 1],
-      duration: 300,
-      easing: 'easeOutQuad'
-    });
-
-    if (dialog) {
-      animate(dialog, {
-        translateY: [20, 0],
-        scale: [0.95, 1],
-        opacity: [0, 1],
-        duration: 450,
-        easing: 'easeOutElastic(1, .8)'
-      }).then(done);
-    } else {
-      done();
-    }
-  });
-};
-
-const onLeave = (el: any, done: () => void) => {
-  const dialog = el.querySelector('.g-modal-dialog');
-
-  import('animejs').then(({ animate }) => {
-    // Fade out overlay
-    animate(el, {
-      opacity: 0,
-      duration: 250,
-      easing: 'easeInQuad'
-    });
-
-    if (dialog) {
-      animate(dialog, {
-        translateY: 15,
-        scale: 0.97,
-        opacity: 0,
-        duration: 200,
-        easing: 'easeInQuad'
-      }).then(done);
-    } else {
-      done();
-    }
-  });
-};
 </script>
 
 <style scoped>
-/* Converted to var for theme support */
 .g-modal-overlay {
   position: fixed;
   inset: 0;
   background: var(--md-sys-color-scrim);
-  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 2000;
-  /* Increased to be above App.vue header which has z-index 1000 */
 }
 
 .g-modal-dialog {
   width: 100%;
+  max-width: var(--modal-max-width, 640px);
   margin: 1rem;
   max-height: calc(100vh - 2rem);
   display: flex;
   flex-direction: column;
-  transform-origin: center;
 }
 
 .g-modal-card-wrapper {
@@ -253,60 +180,41 @@ const onLeave = (el: any, done: () => void) => {
   position: relative;
   overflow-y: auto;
   max-height: 100%;
-  /* Add padding space for the absolute close button if density is compact, though comfortable is default */
 }
 
-/* Ensure the close button is visible and above other content */
 .g-modal-close-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   border: none;
   background: transparent;
   cursor: pointer;
-  border-radius: 999px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: var(--md-sys-color-on-surface-variant);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: all 0.12s ease;
   z-index: 10;
-  box-shadow: none; /* Reset global button shadow */
   padding: 0;
 }
 
 .g-modal-close-btn:hover {
-  background-color: var(--md-sys-color-surface-container-high);
+  background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface);
 }
 
-
-/* Animación */
-.g-modal-fade-enter-active,
-.g-modal-fade-leave-active {
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
-}
-
-.g-modal-fade-enter-from,
-.g-modal-fade-leave-to {
-  opacity: 0;
-  transform: translateY(4px) scale(0.97);
-}
-
-/* Footer */
 .g-modal-footer {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--md-sys-color-outline-variant);
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--md-sys-color-outline);
 }
 
 .g-modal-footer-actions {
@@ -317,8 +225,8 @@ const onLeave = (el: any, done: () => void) => {
 .g-modal-add-another {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
+  gap: 0.4rem;
+  font-size: 0.82rem;
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   user-select: none;
@@ -329,5 +237,84 @@ const onLeave = (el: any, done: () => void) => {
   height: 16px;
   cursor: pointer;
   accent-color: var(--md-sys-color-primary);
+}
+
+/* CSS transitions (no animejs) */
+.g-modal-fade-enter-active,
+.g-modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.g-modal-fade-enter-active .g-modal-dialog,
+.g-modal-fade-leave-active .g-modal-dialog {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.g-modal-fade-enter-from,
+.g-modal-fade-leave-to {
+  opacity: 0;
+}
+
+.g-modal-fade-enter-from .g-modal-dialog {
+  transform: translateY(20px) scale(0.96);
+  opacity: 0;
+}
+
+.g-modal-fade-leave-to .g-modal-dialog {
+  transform: translateY(12px) scale(0.98);
+  opacity: 0;
+}
+
+@media (max-width: 600px) {
+  .g-modal-dialog {
+    margin: 0.5rem;
+    max-height: calc(100vh - 1rem);
+  }
+
+  .g-modal-overlay {
+    align-items: flex-end;
+  }
+
+  .g-modal-dialog {
+    max-width: 100% !important;
+  }
+
+  .g-modal-card {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .g-modal-footer {
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+
+  .g-modal-footer-actions {
+    width: 100%;
+  }
+
+  .g-modal-footer-actions .g-btn {
+    flex: 1;
+  }
+
+  .g-modal-close-btn {
+    width: 40px;
+    height: 40px;
+    top: 6px;
+    right: 6px;
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .g-modal-dialog {
+    margin: 0;
+    max-height: 100vh;
+  }
+
+  .g-modal-card {
+    border-radius: 0;
+    max-height: 100vh;
+    padding: 1rem;
+  }
 }
 </style>
