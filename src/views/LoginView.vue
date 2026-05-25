@@ -1,70 +1,66 @@
 <template>
-  <div class="login-container">
-    <div class="login-card g-page-animate">
-      <div class="login-header">
-        <div class="header-logos">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/9/9b/UAdeC_logo.png" alt="UAdeC" class="header-logo uadec-logo" />
-          <div class="logo-divider"></div>
-          <img src="https://sistemas.uadec.mx/images/logo_sistemas.png" alt="Escuela de Sistemas" class="header-logo sistemas-logo" />
+  <div class="login-page">
+    <div class="tech-background"></div>
+
+    <!-- Left Logo with cool animation behind it -->
+    <div class="side-logo-container left-side">
+      <div class="plasma-ring plasma-ring-left"></div>
+      <div class="plasma-ring plasma-ring-left-2"></div>
+      <img :src="UADECLogo" alt="UAdeC" class="huge-logo uadec-logo" />
+    </div>
+
+    <!-- Right Logo with cool animation behind it -->
+    <div class="side-logo-container right-side">
+      <div class="plasma-ring plasma-ring-right"></div>
+      <div class="plasma-ring plasma-ring-right-2"></div>
+      <img :src="ESLogo" alt="Escuela de Sistemas" class="huge-logo es-logo" />
+    </div>
+
+    <div class="login-wrapper">
+      <div class="login-card g-page-animate">
+        <div class="login-header">
+          <h1 class="header-title">SGCF</h1>
+          <p class="header-subtitle">Acceso al sistema de control financiero</p>
         </div>
-        <h1 class="header-title">SGCF</h1>
-        <p class="header-subtitle">Acceso al sistema</p>
-      </div>
 
-      <form @submit.prevent="handleLogin" class="login-form">
-        <GoogleInput v-model="username" label="Usuario" placeholder="Ej: admin" required autofocus />
+        <form @submit.prevent="handleLogin" class="login-form">
+          <GoogleInput v-model="username" label="Usuario" placeholder="Ej: admin" required autofocus />
+          <GoogleInput v-model="password" label="Contraseña" type="password" placeholder="••••••••" required />
 
-        <GoogleInput v-model="password" label="Contrasena" type="password" placeholder="••••••••" required />
-
-        <div v-if="error" class="error-box">
-          <span class="material-symbols-outlined">error</span>
-          <span>{{ error }}</span>
-        </div>
-
-        <GoogleButton 
-          type="submit" 
-          class="login-submit-btn" 
-          :loading="loadingLocal"
-          :disabled="!!error && error.includes('intentos')"
-        >
-          Iniciar sesion
-        </GoogleButton>
-      </form>
-
-      <div class="sso-divider">
-        <span>o continua con</span>
-      </div>
-
-      <div class="sso-buttons">
-        <div id="googleSignInDiv" class="sso-btn-google"></div>
-
-        <GoogleButton
-          type="button"
-          variant="outlined"
-          class="sso-btn ms-btn"
-          :loading="loadingMicrosoft"
-          @click="startMicrosoftLogin"
-        >
-          <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="sso-brand-img" />
-          Continuar con Microsoft
-        </GoogleButton>
-      </div>
-
-      <p v-if="!googleClientId" class="sso-hint">
-        Configura la variable de entorno VITE_GOOGLE_CLIENT_ID para habilitar el acceso con Google.
-      </p>
-
-      <div class="register-entry">
-        <span>¿No tienes cuenta?</span>
-        <RouterLink to="/registro" custom v-slot="{ navigate }">
-          <GoogleButton type="button" variant="text" @click="navigate">
-            Registrarme
+          <GoogleButton type="submit" class="login-submit-btn" :loading="loadingLocal">
+            Iniciar sesión
           </GoogleButton>
-        </RouterLink>
-      </div>
+        </form>
 
-      <div class="login-footer">
-        <p>© 2026 Sistema Gestor de Control Financiero</p>
+        <div class="sso-divider">
+          <span>o continúa con</span>
+        </div>
+
+        <div class="sso-buttons">
+          <div id="googleSignInDiv" class="sso-btn-google"></div>
+
+          <GoogleButton type="button" variant="outlined" class="sso-btn ms-btn" :loading="loadingMicrosoft" @click="startMicrosoftLogin">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft" class="sso-brand-img" />
+            Continuar con Microsoft
+          </GoogleButton>
+        </div>
+
+        <p v-if="!googleClientId" class="sso-hint">
+          Configura la variable de entorno VITE_GOOGLE_CLIENT_ID para habilitar el acceso con Google.
+        </p>
+
+        <div class="register-entry">
+          <span>¿No tienes cuenta?</span>
+          <RouterLink to="/registro" custom v-slot="{ navigate }">
+            <GoogleButton type="button" variant="text" @click="navigate">
+              Registrarme
+            </GoogleButton>
+          </RouterLink>
+        </div>
+
+        <div class="login-footer">
+          <p>&copy; 2026 Sistema Gestor de Control Financiero</p>
+        </div>
       </div>
     </div>
   </div>
@@ -77,6 +73,12 @@ import { useAuthStore } from '../stores/auth';
 import GoogleInput from '../components/ui/input.vue';
 import GoogleButton from '../components/ui/button.vue';
 import { initializeMsal, loginPopup } from '../services/msal';
+import { useToast } from '../composables/useToast';
+
+import UADECLogo from '../assets/Logotipo-UADEC-vertical.webp';
+import ESLogo from '../assets/ES-logoww.webp';
+
+const toast = useToast();
 
 const username = ref('');
 const password = ref('');
@@ -84,8 +86,6 @@ const password = ref('');
 const loadingLocal = ref(false);
 const loadingMicrosoft = ref(false);
 const loadingGoogle = ref(false);
-
-const error = ref<string | null>(null);
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -103,12 +103,10 @@ function parseAuthError(err: unknown, fallback: string): string {
   const raw = backendMessage || (err instanceof Error ? err.message : fallback);
   const normalized = raw.toLowerCase();
   
-  // Si el error es 429 (Rate Limit)
   if (response?.status === 429) {
     return data?.message || 'Demasiados intentos. Por favor, espera un momento antes de reintentar.';
   }
 
-  // Si el error es 401 (Unauthorized) en Google Login, suele ser por falta de env vars en Render
   if (response?.status === 401 && normalized.includes('google')) {
     return 'Error de configuración en el servidor. Verifica que las variables de entorno estén configuradas en Render.';
   }
@@ -187,8 +185,13 @@ async function ensureGoogleIdentityReady() {
         text: 'continue_with',
         shape: 'rectangular',
         logo_alignment: 'left',
-        width: 366 // Ancho ajustado para que coincida con el formulario
       });
+
+      const googleBtnInner = googleBtnDiv.querySelector('div');
+      if (googleBtnInner) {
+        googleBtnInner.style.width = '100%';
+        googleBtnInner.style.maxWidth = '100%';
+      }
     }
 
     googleInitialized = true;
@@ -199,14 +202,13 @@ async function handleLogin() {
   if (!username.value || !password.value) return;
 
   loadingLocal.value = true;
-  error.value = null;
 
   try {
     await auth.login(username.value, password.value);
-    router.push('/inicio');
+    router.push('/dashboard-alumnos');
   } catch (err) {
     console.error(err);
-    error.value = parseAuthError(err, 'Usuario o contrasena incorrectos.');
+    toast.error(parseAuthError(err, 'Usuario o contrasena incorrectos.'));
   } finally {
     loadingLocal.value = false;
   }
@@ -217,7 +219,7 @@ function handleGoogleCredential(response: { credential?: string }) {
   const idToken = String(response?.credential ?? '');
   if (!idToken) {
     loadingGoogle.value = false;
-    error.value = 'Google no devolvio un token valido.';
+    toast.error('Google no devolvio un token valido.');
     console.error('[Auth] Fallo: no se recibió token.');
     return;
   }
@@ -228,10 +230,10 @@ function handleGoogleCredential(response: { credential?: string }) {
     try {
       await auth.loginWithGoogle(idToken);
       console.log('[Auth] Éxito. Redirigiendo a /inicio');
-      router.push('/inicio');
+      router.push('/dashboard-alumnos');
     } catch (err) {
       console.error('[Auth] Error devuelto por el backend:', err);
-      error.value = parseAuthError(err, 'No fue posible iniciar sesion con Google.');
+      toast.error(parseAuthError(err, 'No fue posible iniciar sesion con Google.'));
     } finally {
       loadingGoogle.value = false;
     }
@@ -239,7 +241,6 @@ function handleGoogleCredential(response: { credential?: string }) {
 }
 async function startMicrosoftLogin() {
   loadingMicrosoft.value = true;
-  error.value = null;
 
   try {
     const result = await loginPopup();
@@ -250,14 +251,14 @@ async function startMicrosoftLogin() {
     }
 
     await auth.loginWithMicrosoft({ id_token: idToken });
-    router.push('/inicio');
+    router.push('/dashboard-alumnos');
   } catch (err: any) {
     if (err.name === 'BrowserAuthError' && err.errorCode === 'user_cancelled') {
         console.warn('[MSAL] Login cancelado por el usuario.');
         return;
     }
     console.error(err);
-    error.value = parseAuthError(err, 'No fue posible completar el inicio de sesión con Microsoft.');
+    toast.error(parseAuthError(err, 'No fue posible completar el inicio de sesión con Microsoft.'));
   } finally {
     loadingMicrosoft.value = false;
   }
@@ -265,7 +266,7 @@ async function startMicrosoftLogin() {
 
 onMounted(() => {
   if (route.query.reason === 'inactive') {
-    error.value = 'Tu sesion fue cerrada porque el usuario esta inactivo.';
+    toast.error('Tu sesion fue cerrada porque el usuario esta inactivo.');
   }
 
   console.log('[Auth] Google Client ID:', googleClientId);
@@ -274,7 +275,7 @@ onMounted(() => {
     .then(() => console.log('[Auth] Google ready'))
     .catch((e) => {
       console.warn('[Auth] Google init error:', e);
-      error.value = parseAuthError(e, 'No fue posible cargar Google Sign-In.');
+      toast.error(parseAuthError(e, 'No fue posible cargar Google Sign-In.'));
     });
 
   initializeMsal()
@@ -284,72 +285,161 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.login-container {
+.login-page {
   min-height: 100vh;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(circle at top left, var(--md-sys-color-primary-container) 0%, transparent 35%),
-    radial-gradient(circle at bottom right, var(--md-sys-color-surface-container) 0%, transparent 40%),
-    var(--md-sys-color-background);
+  background: var(--md-sys-color-background);
+  position: relative;
+  overflow-x: hidden;
   padding: 1.5rem;
 }
 
-.login-card {
-  background: var(--md-sys-color-surface);
-  padding: 2rem;
-  border-radius: 22px;
-  width: 100%;
-  max-width: 430px;
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12);
-  border: 1px solid var(--md-sys-color-outline-variant);
+.tech-background {
+  position: absolute;
+  inset: 0;
+  background: var(--md-sys-color-background);
+  z-index: 1;
 }
 
-.login-header {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.header-logos {
+/* Side Logos with Animations */
+.side-logo-container {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  padding: 0.5rem;
+  width: 300px;
+  height: 300px;
 }
 
-.header-logo {
-  height: 60px;
+.left-side {
+  left: 8%;
+}
+
+.right-side {
+  right: 8%;
+}
+
+.huge-logo {
   object-fit: contain;
-  transition: transform 0.3s ease;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  position: relative;
+  z-index: 3;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  filter: drop-shadow(0 0 20px rgba(0,0,0,0.5));
 }
 
-.header-logo:hover {
-  transform: scale(1.05);
+.uadec-logo {
+  max-width: 240px;
+  max-height: 240px;
 }
 
-.logo-divider {
-  width: 1px;
-  height: 40px;
-  background-color: var(--md-sys-color-outline-variant);
-  opacity: 0.5;
+.es-logo {
+  max-width: 170px;
+  max-height: 170px;
+}
+
+/* Cool animated plasma rings surrounding the logos */
+.plasma-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid;
+  background: transparent;
+  animation: plasmaPulse 4s ease-in-out infinite alternate;
+  box-shadow: 0 0 40px rgba(0, 120, 212, 0.15), inset 0 0 40px rgba(0, 120, 212, 0.05);
+}
+
+.plasma-ring-left {
+  width: 90%;
+  height: 90%;
+  border-color: rgba(0, 120, 212, 0.3);
+  box-shadow: 0 0 50px rgba(0, 120, 212, 0.2), inset 0 0 50px rgba(0, 120, 212, 0.05);
+}
+
+.plasma-ring-left-2 {
+  width: 70%;
+  height: 70%;
+  border-color: rgba(0, 180, 216, 0.2);
+  border-width: 1px;
+  animation: plasmaPulse 5s ease-in-out infinite alternate-reverse;
+  box-shadow: 0 0 30px rgba(0, 180, 216, 0.1), inset 0 0 30px rgba(0, 180, 216, 0.03);
+}
+
+.plasma-ring-right {
+  width: 90%;
+  height: 90%;
+  border-color: rgba(41, 182, 246, 0.3);
+  box-shadow: 0 0 50px rgba(41, 182, 246, 0.2), inset 0 0 50px rgba(41, 182, 246, 0.05);
+}
+
+.plasma-ring-right-2 {
+  width: 70%;
+  height: 70%;
+  border-color: rgba(25, 118, 210, 0.2);
+  border-width: 1px;
+  animation: plasmaPulse 6s ease-in-out infinite alternate-reverse;
+  box-shadow: 0 0 30px rgba(25, 118, 210, 0.1), inset 0 0 30px rgba(25, 118, 210, 0.03);
+}
+
+@keyframes plasmaPulse {
+  0% { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.08); }
+}
+
+.login-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--md-sys-color-surface);
+  border-radius: 8px;
+  padding: 2.5rem 2rem;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--md-sys-color-outline);
+  animation: cardFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-header {
+  margin-bottom: 1.75rem;
+  text-align: center;
 }
 
 .header-title {
   margin: 0;
-  font-size: 2.2rem;
+  font-size: 2rem;
   font-weight: 800;
-  color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-surface);
   letter-spacing: -0.02em;
 }
 
 .header-subtitle {
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 1rem;
-  margin: 0;
+  font-size: 0.9rem;
+  margin: 0.35rem 0 0;
+  font-weight: 400;
 }
 
 .login-form {
@@ -361,27 +451,19 @@ onMounted(() => {
 .login-submit-btn {
   width: 100%;
   margin-top: 0.35rem;
-}
-
-.error-box {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--md-sys-color-on-error-container);
-  background: var(--md-sys-color-error-container);
-  border: 1px solid var(--md-sys-color-error);
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  font-size: 0.88rem;
+  height: 48px;
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 .sso-divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 1.5rem 0 1.25rem;
-  color: var(--md-sys-color-outline);
-  font-size: 0.82rem;
+  margin: 1.5rem 0 1.1rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.8rem;
+  gap: 0.75rem;
 }
 
 .sso-divider::before,
@@ -389,16 +471,12 @@ onMounted(() => {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--md-sys-color-outline-variant);
-}
-
-.sso-divider span {
-  margin: 0 0.65rem;
+  background: var(--md-sys-color-outline);
 }
 
 .sso-buttons {
   display: grid;
-  gap: 0.65rem;
+  gap: 0.75rem;
 }
 
 .sso-btn-google {
@@ -407,32 +485,57 @@ onMounted(() => {
   justify-content: center;
 }
 
+.sso-btn-google :deep(.abcRioButton),
+.sso-btn-google :deep(div[role="button"]),
+.sso-btn-google > div > div {
+  width: 100% !important;
+  border-radius: 8px !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.sso-btn-google > div > div:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+}
+
 .sso-btn {
   width: 100%;
-  justify-content: flex-start;
-  border-radius: 10px;
-  padding-left: 0.85rem;
+  justify-content: center;
+  height: 44px;
+  font-size: 0.88rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.ms-btn {
+  background: var(--md-sys-color-primary) !important;
+  border: 1px solid var(--md-sys-color-primary) !important;
+  color: var(--md-sys-color-on-primary) !important;
+  font-weight: 500;
+}
+
+.ms-btn:hover {
+  background: var(--md-sys-color-primary) !important;
+  color: var(--md-sys-color-on-primary) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--md-sys-color-primary), transparent 80%);
+  filter: brightness(0.92);
 }
 
 .sso-brand-img {
   width: 18px;
   height: 18px;
-  margin-right: 2px;
-}
-
-.ms-btn:hover {
-  border-color: #00a4ef55;
-  background-color: #00a4ef08;
+  margin-right: 8px;
 }
 
 .sso-hint {
-  margin: 1rem 0 0;
+  margin: 0.85rem 0 0;
   font-size: 0.78rem;
-  color: var(--md-sys-color-on-tertiary-container);
-  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-info-container);
+  background: var(--md-sys-color-info-container);
   border: 1px solid var(--md-sys-color-outline-variant);
-  padding: 0.75rem 1rem;
-  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  border-radius: 4px;
 }
 
 .register-entry {
@@ -440,7 +543,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 0.84rem;
 }
@@ -448,47 +551,43 @@ onMounted(() => {
 .login-footer {
   margin-top: 2rem;
   text-align: center;
-  font-size: 0.78rem;
-  color: var(--md-sys-color-outline);
+  font-size: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
-.popup-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
-  gap: 1.5rem;
-  text-align: center;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--md-sys-color-surface-container-highest);
-  border-top: 3px solid var(--md-sys-color-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.g-page-animate {
-  animation: g-fade-in 180ms ease-out;
-}
-
-@keyframes g-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+@media (max-width: 1200px) {
+  .side-logo-container {
+    width: 200px;
+    height: 200px;
   }
+  .huge-logo {
+    max-width: 150px;
+    max-height: 150px;
+  }
+  .left-side {
+    left: 2%;
+  }
+  .right-side {
+    right: 2%;
+  }
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
+@media (max-width: 900px) {
+  .side-logo-container {
+    display: none; /* Hide huge logos on small screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 0.75rem;
+  }
+  .login-card {
+    padding: 1.5rem 1.25rem;
+  }
+  .header-title {
+    font-size: 1.7rem;
   }
 }
 </style>
+
