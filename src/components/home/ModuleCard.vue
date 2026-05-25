@@ -59,38 +59,56 @@ defineProps<Props>();
   align-items: flex-start;
   gap: 1.25rem;
   padding: 1.5rem;
-  background-color: color-mix(in srgb, var(--md-sys-color-surface), transparent 8%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--md-sys-color-surface);
   border-radius: 24px;
   text-decoration: none;
   color: inherit;
-  border: 1px solid var(--md-sys-color-outline-variant);
+  border: 1px solid var(--md-sys-color-outline);
   border-top: 4px solid var(--card-color);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
   cursor: pointer;
 }
 
-.card-glow {
+.module-card::before {
+  content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at center, color-mix(in srgb, var(--card-color), transparent 95%) 0%, transparent 50%);
+  inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--card-color), transparent 92%) 0%, transparent 50%);
   opacity: 0;
   transition: opacity 0.4s ease;
   pointer-events: none;
+  border-radius: 24px;
+}
+
+.card-glow {
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--card-color), transparent 96%) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+  animation: glowRotate 8s linear infinite;
+}
+
+@keyframes glowRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .module-card:hover {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--shadow-xl);
   border-color: var(--card-color);
-  background-color: var(--md-sys-color-surface-container-low);
+}
+
+.module-card:hover::before {
+  opacity: 1;
 }
 
 .module-card:hover .card-glow {
@@ -98,25 +116,30 @@ defineProps<Props>();
 }
 
 .module-icon-container {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background-color: color-mix(in srgb, var(--card-color), transparent 92%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--card-color), transparent 90%) 0%, color-mix(in srgb, var(--card-color), transparent 96%) 100%);
   color: var(--card-color);
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .module-card:hover .module-icon-container {
-  transform: rotate(12deg) scale(1.15);
-  background-color: color-mix(in srgb, var(--card-color), transparent 85%);
+  transform: scale(1.1) rotate(-5deg);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--card-color), transparent 80%) 0%, color-mix(in srgb, var(--card-color), transparent 90%) 100%);
 }
 
 .module-icon-container .material-symbols-outlined {
-  font-size: 2.25rem;
+  font-size: 2rem;
+  transition: transform 0.3s ease;
+}
+
+.module-card:hover .module-icon-container .material-symbols-outlined {
+  transform: scale(1.15);
 }
 
 .card-content {
@@ -125,17 +148,22 @@ defineProps<Props>();
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 64px;
+  min-height: 56px;
   padding: 0.25rem 0;
 }
 
 .module-title {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--md-sys-color-on-surface);
   margin-bottom: 0.15rem;
   letter-spacing: -0.01em;
   line-height: 1.25;
+  transition: color 0.3s ease;
+}
+
+.module-card:hover .module-title {
+  color: var(--card-color);
 }
 
 .module-desc {
@@ -145,12 +173,12 @@ defineProps<Props>();
 }
 
 .card-arrow {
-  color: var(--md-sys-color-outline-variant);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  opacity: 0.5;
+  color: var(--md-sys-color-outline);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  opacity: 0.3;
   display: flex;
   align-items: center;
-  min-height: 64px;
+  min-height: 56px;
 }
 
 .module-card:hover .card-arrow {
@@ -161,52 +189,54 @@ defineProps<Props>();
 
 .card-badges {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 0.75rem;
+  right: 0.75rem;
   display: flex;
   flex-direction: row-reverse;
-  gap: 0.25rem;
+  gap: 0.3rem;
   pointer-events: none;
 }
 
 .featured-badge {
-  background-color: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 800;
+  background: var(--gradient-primary);
+  color: var(--md-sys-color-on-primary);
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.6rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
+  letter-spacing: 0.06em;
+}
+
+.locked-badge {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .module-card.featured {
-  background-color: var(--md-sys-color-surface-container);
+  background: linear-gradient(135deg, var(--md-sys-color-surface) 0%, color-mix(in srgb, var(--card-color), transparent 96%) 100%);
 }
 
 .module-card--locked {
-  opacity: 0.65;
+  opacity: 0.5;
   cursor: not-allowed;
-  filter: grayscale(0.85);
+  filter: grayscale(0.9);
 }
 
 .module-card--locked:hover {
   transform: none;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   filter: grayscale(1);
 }
 
-.locked-badge {
-  background-color: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-on-error-container);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
+.module-card--locked:hover .module-title {
+  color: var(--md-sys-color-on-surface);
 }
 
 @media (max-width: 480px) {
