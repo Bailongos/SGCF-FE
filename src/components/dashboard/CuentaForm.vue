@@ -51,12 +51,26 @@
       <span class="material-symbols-outlined">error</span>
       {{ error }}
     </div>
+
+    <div class="form-actions">
+      <GoogleButton type="button" variant="text" :disabled="loading" @click="$emit('cancel')">
+        Cancelar
+      </GoogleButton>
+      <GoogleButton type="submit" :loading="loading" :disabled="loading">
+        {{ isEditing ? 'Actualizar' : 'Guardar' }}
+      </GoogleButton>
+      <label v-if="!isEditing" class="add-another-label">
+        <input type="checkbox" :checked="addAnother" @change="emit('update:addAnother', ($event.target as HTMLInputElement).checked)" />
+        <span>Agregar otro</span>
+      </label>
+    </div>
   </form>
 </template>
 
 <script setup lang="ts">
 import GoogleInput from '../ui/input.vue';
 import GoogleSelect from '../ui/select.vue';
+import GoogleButton from '../ui/button.vue';
 
 interface Props {
   form: any;
@@ -64,10 +78,21 @@ interface Props {
   cicloOptions: any[];
   metodoOptions: any[];
   error?: string | null;
+  loading?: boolean;
+  isEditing?: boolean;
+  addAnother?: boolean;
 }
 
-defineProps<Props>();
-defineEmits(['submit']);
+withDefaults(defineProps<Props>(), {
+  loading: false,
+  isEditing: false,
+  addAnother: false
+});
+const emit = defineEmits<{
+  (e: 'submit'): void;
+  (e: 'cancel'): void;
+  (e: 'update:addAnother', v: boolean): void;
+}>();
 </script>
 
 <style scoped>
@@ -112,5 +137,25 @@ defineEmits(['submit']);
 @media (max-width: 600px) {
   .form-grid { grid-template-columns: 1fr; }
   .span-2 { grid-column: span 1; }
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.add-another-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: auto;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--md-sys-color-on-surface-variant);
 }
 </style>
