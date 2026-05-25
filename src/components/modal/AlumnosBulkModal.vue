@@ -96,17 +96,17 @@
     </div>
 
     <template #footer>
-      <button type="button" class="btn btn-text" @click="innerVisible = false" :disabled="loading">
+      <GoogleButton type="button" variant="text" @click="innerVisible = false" :disabled="loading">
         Cerrar
-      </button>
-      <button type="button" class="btn btn-primary" @click="$emit('upload')" :disabled="loading || !rows.length">
+      </GoogleButton>
+      <GoogleButton type="button" variant="filled" @click="$emit('upload')" :disabled="loading || !rows.length" :loading="loading">
         <span v-if="loading">
           Cargando {{ progress.processed }} / {{ progress.total }}...
         </span>
         <span v-else>
           Ejecutar carga masiva
         </span>
-      </button>
+      </GoogleButton>
     </template>
   </GoogleModal>
 </template>
@@ -114,6 +114,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import GoogleModal from './modal.vue';
+import GoogleButton from '../ui/button.vue';
 import type { AlumnoCreate } from '../../services/alumnos';
 
 type BulkPreviewRow = AlumnoCreate & {
@@ -168,43 +169,47 @@ function onFileChange(event: Event) {
 }
 
 .field-label {
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .field-input {
   padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
+  border-radius: 4px;
+  border: 1px solid var(--md-sys-color-outline);
   font-size: 0.9rem;
   outline: none;
-  background-color: #ffffff;
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .field-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 1px var(--md-sys-color-primary);
 }
 
 .bulk-file-name {
   font-size: 0.85rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .bulk-hint {
   font-size: 0.8rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.6;
 }
 
 .bulk-hint code {
   font-family: Consolas, monospace;
-  background: #f1f3f4;
+  background: var(--md-sys-color-surface-container);
   padding: 0.05rem 0.25rem;
   border-radius: 4px;
+  color: var(--md-sys-color-on-surface);
 }
 
 .bulk-status {
   font-size: 0.86rem;
-  color: #1a73e8;
+  color: var(--md-sys-color-primary);
 }
 
 .bulk-preview {
@@ -215,18 +220,20 @@ function onFileChange(event: Event) {
   display: flex;
   justify-content: space-between;
   font-size: 0.85rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .table-wrapper.small {
   max-height: 260px;
   overflow: auto;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 4px;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: #ffffff;
+  background: var(--md-sys-color-surface);
 }
 
 .table th,
@@ -236,81 +243,52 @@ function onFileChange(event: Event) {
 }
 
 .table thead {
-  background: #f8f9fa;
+  background: var(--md-sys-color-surface-container);
 }
 
 .table th {
   text-align: left;
-  font-weight: 500;
-  color: #5f6368;
-  border-bottom: 1px solid #dadce0;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  border-bottom: 2px solid var(--md-sys-color-outline);
+  white-space: nowrap;
 }
 
 .table td {
-  border-bottom: 1px solid #f1f3f4;
-  color: #202124;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
 }
 
 .hint {
   font-size: 0.75rem;
-  color: #a0a4a8;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.15rem;
 }
 
 .empty {
   margin-top: 0.75rem;
   font-size: 0.9rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .bulk-errors {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: #fce8e6;
-  border-radius: 8px;
-  border: 1px solid #f8d7da;
+  background: var(--md-sys-color-error-container);
+  border-radius: 4px;
+  border: 1px solid var(--md-sys-color-error);
 }
 
 .bulk-errors h4 {
   margin: 0 0 0.35rem;
   font-size: 0.9rem;
-  color: #b00020;
+  color: var(--md-sys-color-on-error-container);
 }
 
 .bulk-errors ul {
   margin: 0;
   padding-left: 1.1rem;
   font-size: 0.8rem;
-  color: #b00020;
-}
-
-.btn {
-  border-radius: 999px;
-  border: none;
-  font-size: 0.9rem;
-  padding: 0.45rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.btn-primary {
-  background: #1a73e8;
-  color: #ffffff;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-.btn-text {
-  background: transparent;
-  color: #1a73e8;
-}
-
-.btn-text:hover {
-  background: rgba(26, 115, 232, 0.08);
+  color: var(--md-sys-color-on-error-container);
 }
 </style>

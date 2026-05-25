@@ -34,7 +34,7 @@
     </header>
 
     <!-- Tabla -->
-    <AlumnosTable :alumnos="alumnos" :carreras="carreras" :loading="loadingList" :error="error" v-model:search="search"
+    <AlumnosTable :alumnos="alumnos" :carreras="carreras" :loading="loadingList" v-model:search="search"
       @reload="loadAlumnos" @edit="onEdit" @delete="onDelete" @bulk-edit="openBulkEdit"
       @bulk-delete="onBulkDelete" />
 
@@ -99,6 +99,14 @@
     <AlumnosBulkModal v-model="showBulkModal" :file-name="bulkFileName" :rows="bulkRows" :errors="bulkErrors"
       :parsing="bulkParsing" :loading="bulkLoading" :progress="bulkProgress" @file-change="onBulkFileChange"
       @upload="onBulkUpload" />
+
+    <ConfirmModal v-model="showDeleteConfirm" title="Eliminar alumno"
+      :message="deleteTarget ? `¿Eliminar alumno ${deleteTarget}?` : ''" variant="danger" confirmText="Eliminar"
+      @confirm="onDeleteConfirm" />
+
+    <ConfirmModal v-model="showBulkDeleteConfirm" title="Eliminar alumnos"
+      :message="`¿Eliminar ${bulkDeleteTargets.length} alumno(s) seleccionados?`" variant="danger" confirmText="Eliminar"
+      @confirm="onBulkDeleteConfirm" />
   </section>
 </template>
 
@@ -106,12 +114,14 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToast } from '../composables/useToast';
 
 import AlumnosForm from '../components/formulario/AlumnosForm.vue';
 import AlumnosTable from '../components/formulario/AlumnosTable.vue';
 import AlumnosBulkModal from '../components/modal/AlumnosBulkModal.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleButton from '../components/ui/button.vue';
+import ConfirmModal from '../components/modal/ConfirmModal.vue';
 
 import {
   getAlumnos,
@@ -141,7 +151,6 @@ const metodos = ref<MetodoPago[]>([]);
 const loadingList = ref(false);
 const loadingCreate = ref(false);
 const loadingCarreras = ref(false);
-const error = ref<string | null>(null);
 
 const isEditing = ref(false);
 const editingMatricula = ref<string | null>(null);
@@ -149,6 +158,10 @@ const search = ref('');
 
 // ---------- Modal formulario ----------
 const showFormModal = ref(false);
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<string | null>(null);
+const showBulkDeleteConfirm = ref(false);
+const bulkDeleteTargets = ref<string[]>([]);
 
 // ---------- Carga masiva ----------
 const showBulkModal = ref(false);
@@ -197,6 +210,7 @@ const createEmptyForm = (): any => ({
 });
 
 const auth = useAuthStore();
+const toast = useToast();
 const form = ref<any>(createEmptyForm());
 
 const resetForm = () => {
@@ -212,12 +226,11 @@ async function loadXlsxModule() {
 // ---------- Carga de datos ----------
 async function loadAlumnos() {
   try {
-    error.value = null;
     loadingList.value = true;
     alumnos.value = await getAlumnos();
   } catch (e) {
     console.error(e);
-    error.value = 'Error al cargar alumnos';
+    toast.error('Error al cargar alumnos');
   } finally {
     loadingList.value = false;
   }
@@ -256,7 +269,6 @@ onMounted(async () => {
 // ---------- CRUD Alumno ----------
 async function saveAlumno() {
   try {
-    error.value = null;
     loadingCreate.value = true;
 
     if (isEditing.value && editingMatricula.value) {
@@ -292,9 +304,9 @@ async function saveAlumno() {
     resetForm();
   } catch (e) {
     console.error(e);
-    error.value = isEditing.value
+    toast.error(isEditing.value
       ? 'Error al actualizar alumno'
-      : 'Error al crear alumno';
+      : 'Error al crear alumno');
   } finally {
     loadingCreate.value = false;
   }
@@ -395,12 +407,11 @@ async function submitBulkEdit() {
 
   const validationError = validateBulkEditRows();
   if (validationError) {
-    error.value = validationError;
+    toast.error(validationError);
     return;
   }
 
   loadingBulkEdit.value = true;
-  error.value = null;
 
   try {
     const results = await runWithConcurrency(bulkEditRows.value, 6, (row) =>
@@ -419,26 +430,31 @@ async function submitBulkEdit() {
     await loadAlumnos();
 
     if (failed > 0) {
-      error.value = `Se actualizaron ${results.length - failed} de ${results.length} alumnos.`;
+      toast.error(`Se actualizaron ${results.length - failed} de ${results.length} alumnos.`);
       return;
     }
 
     closeBulkEditModal();
   } catch (e: any) {
     console.error(e);
-    error.value = `Error al actualizar alumnos en lote: ${e?.response?.data?.message ?? e?.message ?? 'Error desconocido'}`;
+    toast.error(`Error al actualizar alumnos en lote: ${e?.response?.data?.message ?? e?.message ?? 'Error desconocido'}`);
   } finally {
     loadingBulkEdit.value = false;
   }
 }
 
-async function onBulkDelete(matriculas: string[]) {
+function onBulkDelete(matriculas: string[]) {
+  if (!matriculas.length) return;
+  bulkDeleteTargets.value = matriculas;
+  showBulkDeleteConfirm.value = true;
+}
+
+async function onBulkDeleteConfirm() {
+  const matriculas = bulkDeleteTargets.value;
   if (!matriculas.length) return;
 
-  if (!confirm(`¿Eliminar ${matriculas.length} alumno(s) seleccionados?`)) return;
-
+  showBulkDeleteConfirm.value = false;
   loadingList.value = true;
-  error.value = null;
 
   try {
     const results = await runWithConcurrency(matriculas, 6, (matricula) => deleteAlumno(matricula));
@@ -447,18 +463,24 @@ async function onBulkDelete(matriculas: string[]) {
     await loadAlumnos();
 
     if (failed > 0) {
-      error.value = `Se eliminaron ${results.length - failed} de ${results.length} alumnos.`;
+      toast.error(`Se eliminaron ${results.length - failed} de ${results.length} alumnos.`);
     }
   } catch (e: any) {
     console.error(e);
-    error.value = `Error al eliminar alumnos en lote: ${e?.response?.data?.message ?? e?.message ?? 'Error desconocido'}`;
+    toast.error(`Error al eliminar alumnos en lote: ${e?.response?.data?.message ?? e?.message ?? 'Error desconocido'}`);
   } finally {
     loadingList.value = false;
   }
 }
 
-async function onDelete(matricula: string) {
-  if (!confirm(`¿Eliminar alumno ${matricula}?`)) return;
+function onDelete(matricula: string) {
+  deleteTarget.value = matricula;
+  showDeleteConfirm.value = true;
+}
+
+async function onDeleteConfirm() {
+  const matricula = deleteTarget.value;
+  if (!matricula) return;
   try {
     await deleteAlumno(matricula);
     alumnos.value = alumnos.value.filter((a) => a.matricula !== matricula);
@@ -467,7 +489,10 @@ async function onDelete(matricula: string) {
     }
   } catch (e) {
     console.error(e);
-    error.value = 'Error al eliminar alumno';
+    toast.error('Error al eliminar alumno');
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
   }
 }
 
@@ -802,7 +827,7 @@ watch(showBulkModal, (value) => {
 
 .bulk-input {
   width: 100%;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--md-sys-color-outline);
   border-radius: 8px;
   padding: 0.35rem 0.5rem;
   font-size: 0.84rem;
