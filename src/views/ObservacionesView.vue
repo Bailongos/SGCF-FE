@@ -25,34 +25,27 @@
       </div>
     </header>
 
-    <div class="filters-panel">
-      <div class="field">
-        <span class="field-label">Filtrar por matrícula</span>
-        <input v-model="filters.matricula" class="field-input" list="alumnos-list-obs" placeholder="Todas" @change="loadObservaciones" />
-        <datalist id="alumnos-list-obs">
-          <option v-for="al in alumnos" :key="al.matricula" :value="al.matricula">{{ al.matricula }} · {{ al.nombre_completo }}</option>
-        </datalist>
-      </div>
+    <FilterBar compact :activeCount="filterActiveCount" @clear="clearFilters">
+      <GoogleInput v-model="filters.matricula" placeholder="Todas las matrículas" size="sm" list="alumnos-list-obs" />
+      <datalist id="alumnos-list-obs">
+        <option v-for="al in alumnos" :key="al.matricula" :value="al.matricula">{{ al.matricula }} · {{ al.nombre_completo }}</option>
+      </datalist>
 
-      <div class="field">
-        <span class="field-label">Tipo</span>
-        <select v-model="filters.tipo" class="field-input" @change="loadObservaciones">
-          <option value="">Todos</option>
-          <option v-for="tipo in tipoOptions" :key="tipo.clave" :value="tipo.clave">{{ tipo.nombre }}</option>
-        </select>
-      </div>
+      <GoogleSelect v-model="filters.tipo" :options="tipoSelectOptions" placeholder="Todos los tipos" size="sm" />
 
-      <div class="filters-actions">
-        <GoogleButton variant="text" @click="resetFilters">Limpiar</GoogleButton>
-      </div>
-    </div>
+      <template #actions>
+        <GoogleButton variant="text" size="sm" @click="loadObservaciones">
+          <span class="material-symbols-outlined">refresh</span>
+          Recargar
+        </GoogleButton>
+      </template>
+    </FilterBar>
 
     <GoogleTable 
       :rows="tableRows" 
       :columns="columns" 
       rowKey="id_observacion" 
       :loading="loadingList"
-      :error="error" 
       v-model:search="search" 
       title="Bitácora de Observaciones"
       subtitle="Consulta el historial de notas registradas." 
@@ -60,7 +53,6 @@
       :showReload="true"
       :useDefaultActions="true" 
       :searchKeys="['matricula', 'alumno_nombre', 'autor_nombre', 'detalle']"
-      :successMessage="successMessage" 
       @reload="loadObservaciones" 
       @edit="onEdit" 
       @delete="onDelete" 
@@ -87,25 +79,34 @@
         @submit="handleFormSubmit"
       />
     </GoogleModal>
+
+    <ConfirmModal v-model="showDeleteConfirm" title="Eliminar observación" message="¿Eliminar esta observación?"
+      variant="danger" confirmText="Eliminar" @confirm="onDeleteConfirm" />
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToast } from '../composables/useToast';
 
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleSelect from '../components/ui/select.vue';
+import FilterBar from '../components/ui/FilterBar.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
 import GoogleChip from '../components/ui/chip.vue';
 import ObservacionForm from '../components/dashboard/ObservacionForm.vue';
+import ConfirmModal from '../components/modal/ConfirmModal.vue';
 
 import { getObservaciones, getTiposObservacion, createObservacion, updateObservacion, deleteObservacion as deleteAPI, type Observacion } from '../services/observaciones';
 import { getAlumnos } from '../services/alumnos';
 import { getUsuarios } from '../services/usuarios';
 
 const auth = useAuthStore();
+const toast = useToast();
 const observaciones = ref<Observacion[]>([]);
 const alumnos = ref<any[]>([]);
 const usuarios = ref<any[]>([]);
@@ -113,16 +114,32 @@ const tipos = ref<any[]>([]);
 
 const loadingList = ref(false);
 const loadingSave = ref(false);
-const error = ref<string | null>(null);
 const formError = ref<string | null>(null);
-const successMessage = ref<string | null>(null);
 const showFormModal = ref(false);
 const isEditing = ref(false);
 const search = ref('');
 const filters = ref({ matricula: '', tipo: '' });
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<Observacion | null>(null);
 const form = ref<any | null>(null);
 
 const tipoOptions = computed(() => tipos.value.map(t => ({ clave: t.clave, nombre: t.nombre })));
+const tipoSelectOptions = computed(() => [
+  { value: '', label: 'Todos los tipos' },
+  ...tipoOptions.value.map(t => ({ value: t.clave, label: t.nombre })),
+]);
+
+const filterActiveCount = computed(() =>
+  [filters.value.matricula, filters.value.tipo].filter(v => v !== '' && v !== null && v !== undefined).length
+);
+
+function clearFilters() {
+  filters.value = { matricula: '', tipo: '' };
+  loadObservaciones();
+}
+
+watch(filters, () => { loadObservaciones(); }, { deep: true });
+
 const tableRows = computed(() => observaciones.value.map(o => ({
   ...o,
   alumno_nombre: alumnos.value.find(al => al.matricula === o.matricula)?.nombre_completo || o.matricula,
@@ -154,11 +171,10 @@ async function loadObservaciones() {
       matricula: filters.value.matricula || undefined,
       tipo: filters.value.tipo || undefined
     });
-  } catch (e) { error.value = 'No se pudieron cargar las observaciones.'; }
+  } catch (e) { toast.error('No se pudieron cargar las observaciones.'); }
   finally { loadingList.value = false; }
 }
 
-function resetFilters() { filters.value = { matricula: '', tipo: '' }; loadObservaciones(); }
 function getCurrentUsername() { return auth.user?.username || ''; }
 
 function openCreateForm() {
@@ -174,25 +190,35 @@ function onEdit(row: Observacion) {
 }
 
 async function handleFormSubmit() {
-  if (!form.value.matricula || !form.value.detalle) { formError.value = 'Completa los campos obligatorios.'; return; }
+  if (!form.value.matricula || !form.value.detalle) { toast.error('Completa los campos obligatorios.'); return; }
   loadingSave.value = true;
   try {
     if (isEditing.value) await updateObservacion(form.value.id_observacion, form.value);
     else await createObservacion(form.value);
     await loadObservaciones();
     showFormModal.value = false;
-    successMessage.value = isEditing.value ? 'Actualizado correctamente.' : 'Creado correctamente.';
-  } catch (e) { formError.value = 'Error al guardar la observación.'; }
+    toast.success(isEditing.value ? 'Actualizado correctamente.' : 'Creado correctamente.');
+  } catch (e) { toast.error('Error al guardar la observación.'); }
   finally { loadingSave.value = false; }
 }
 
-async function onDelete(row: Observacion) {
-  if (!confirm('¿Eliminar esta observación?')) return;
+function onDelete(row: Observacion) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
+}
+
+async function onDeleteConfirm() {
+  const row = deleteTarget.value;
+  if (!row) return;
   try {
     await deleteAPI(row.id_observacion);
     await loadObservaciones();
-    successMessage.value = 'Eliminado correctamente.';
-  } catch (e) { error.value = 'Error al eliminar.'; }
+    toast.success('Eliminado correctamente.');
+  } catch (e) { toast.error('Error al eliminar.'); }
+  finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
+  }
 }
 
 onMounted(async () => { await loadData(); await loadObservaciones(); });
@@ -204,15 +230,5 @@ onMounted(async () => { await loadData(); await loadObservaciones(); });
 .page-title { font-size: 1.75rem; font-weight: 700; color: var(--md-sys-color-on-surface); margin: 0; }
 .page-subtitle { color: var(--md-sys-color-on-surface-variant); margin-top: 0.25rem; }
 .page-header-meta { display: flex; gap: 1rem; align-items: center; }
-.filters-panel {
-  display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;
-  padding: 1rem; border-radius: 12px; background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
-}
-.field-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--md-sys-color-on-surface-variant); margin-bottom: 0.4rem; }
-.field-input { 
-  width: 100%; padding: 0.65rem; border-radius: 8px; border: 1px solid var(--md-sys-color-outline-variant);
-  background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface);
-}
 @media (max-width: 800px) { .filters-panel { grid-template-columns: 1fr; } }
 </style>

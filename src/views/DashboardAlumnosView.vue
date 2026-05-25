@@ -35,26 +35,61 @@
 
     <!-- Sección de Filtros y Tabla -->
     <main class="dashboard-main">
-      <DashboardFilters 
-        v-model:search="search"
-        v-model:filterCarrera="filterCarrera"
-        v-model:filterCiclo="filterCiclo"
-        v-model:filterSemestre="filterSemestre"
-        v-model:filterPago="filterPago"
-        :carreraOptions="carreraOptions"
-        :cicloOptions="cicloOptions"
-        :semestreOptions="semestreOptions"
-        :canChangeCarrera="auth.can('filters.carrera.change')"
-        :selectedCount="selectedCount"
-        @reload="loadData"
-        @bulk-edit="openBulkEditModal"
-        @bulk-delete="deleteSelectedAlumnos"
-      />
+      <FilterBar compact :activeCount="filterActiveCount" @clear="clearFilters">
+        <GoogleInput
+          v-model="search"
+          class="filter-search-input"
+          size="sm"
+          placeholder="Buscar matrícula o nombre..."
+          icon="search"
+        />
 
-      <div v-if="error" class="error-banner">
-        <span class="material-symbols-outlined">error</span>
-        {{ error }}
-      </div>
+        <GoogleSelect
+          v-model="filterCarrera"
+          :options="carreraOptions"
+          placeholder="Plan"
+          size="sm"
+          :disabled="!auth.can('filters.carrera.change')"
+        />
+
+        <GoogleSelect
+          v-model="filterCiclo"
+          :options="cicloOptions"
+          placeholder="Ciclo"
+          size="sm"
+        />
+
+        <GoogleSelect
+          v-model="filterSemestre"
+          :options="semestreOptions"
+          placeholder="Semestre"
+          size="sm"
+        />
+
+        <GoogleSelect
+          v-model="filterPago"
+          :options="pagoOptions"
+          placeholder="Pago"
+          size="sm"
+        />
+
+        <template #actions>
+          <GoogleButton variant="text" size="sm" @click="loadData" title="Recargar">
+            <span class="material-symbols-outlined">refresh</span>
+          </GoogleButton>
+
+          <template v-if="selectedCount > 0">
+            <GoogleButton variant="outlined" size="sm" @click="openBulkEditModal">
+              <span class="material-symbols-outlined">edit_square</span>
+              Editar ({{ selectedCount }})
+            </GoogleButton>
+
+            <GoogleButton variant="text" size="sm" class="btn-danger" @click="deleteSelectedAlumnos" title="Eliminar seleccionados">
+              <span class="material-symbols-outlined">delete_sweep</span>
+            </GoogleButton>
+          </template>
+        </template>
+      </FilterBar>
 
       <AlumnoDataTable 
         :data="filteredData"
@@ -145,14 +180,9 @@
     <GoogleModal v-model="showCuentaModal" 
       :icon="isEditingCuenta ? 'edit' : 'request_quote'"
       :title="isEditingCuenta ? 'Editar cuenta' : 'Nueva cuenta por cobrar'"
+      subtitle="Registra o modifica una cuenta por cobrar."
       maxWidth="700px" 
-      :confirmLoading="loadingSave"
-      :confirmText="isEditingCuenta ? 'Actualizar' : 'Guardar'" 
-      cancelText="Cancelar" 
-      :showAddAnother="!isEditingCuenta"
-      v-model:addAnother="addAnotherCuenta" 
-      @confirm="handleCuentaSubmit" 
-      @cancel="showCuentaModal = false"
+      :showFooter="false"
     >
       <CuentaForm 
         v-if="cuentaForm"
@@ -160,7 +190,11 @@
         :conceptoOptions="availableConceptoOptionsForCuenta"
         :cicloOptions="cicloOptions"
         :metodoOptions="metodoOptions"
+        :loading="loadingSave"
+        :isEditing="isEditingCuenta"
+        v-model:addAnother="addAnotherCuenta"
         @submit="handleCuentaSubmit"
+        @cancel="showCuentaModal = false"
       />
     </GoogleModal>
 
@@ -168,14 +202,9 @@
     <GoogleModal v-model="showObservacionModal" 
       :icon="isEditingObservacion ? 'edit_note' : 'note_add'"
       :title="isEditingObservacion ? 'Editar observación' : 'Nueva observación'"
+      subtitle="Registra una nota o incidencia del alumno."
       maxWidth="600px" 
-      :confirmLoading="loadingSave" 
-      :confirmText="isEditingObservacion ? 'Actualizar' : 'Guardar'" 
-      cancelText="Cancelar"
-      :showAddAnother="!isEditingObservacion" 
-      v-model:addAnother="addAnotherObservacion"
-      @confirm="handleObservacionSubmit" 
-      @cancel="showObservacionModal = false"
+      :showFooter="false"
     >
       <ObservacionForm 
         v-if="observacionForm"
@@ -183,7 +212,11 @@
         :tipoOptions="observacionTipoSelectOptions"
         :usuarios="usuarios"
         :currentUsername="getCurrentUsername()"
+        :loading="loadingSave"
+        :isEditing="isEditingObservacion"
+        v-model:addAnother="addAnotherObservacion"
         @submit="handleObservacionSubmit"
+        @cancel="showObservacionModal = false"
       />
     </GoogleModal>
   </section>
@@ -193,10 +226,13 @@
 import { ref, computed, onMounted } from 'vue';
 // RouterLink is used dynamically in :is component
 import {  } from 'vue-router';
+import { useToast } from '../composables/useToast';
 import { useAuthStore } from '../stores/auth';
 
 // Componentes UI & Layout
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleSelect from '../components/ui/select.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import AlumnosForm from '../components/formulario/AlumnosForm.vue';
 import CarrerasManager from '../components/mantenimiento/CarrerasManager.vue';
@@ -205,7 +241,7 @@ import AlumnosBulkModal from '../components/modal/AlumnosBulkModal.vue';
 
 // Componentes Dashboard Modularizados
 import DashboardStats from '../components/dashboard/DashboardStats.vue';
-import DashboardFilters from '../components/dashboard/DashboardFilters.vue';
+import FilterBar from '../components/ui/FilterBar.vue';
 import AlumnoDataTable from '../components/dashboard/AlumnoDataTable.vue';
 import BulkEditModal from '../components/dashboard/BulkEditModal.vue';
 import AlumnoDetailsModal from '../components/dashboard/AlumnoDetailsModal.vue';
@@ -238,8 +274,8 @@ const tiposObservacion = ref<TipoObservacion[]>([]);
 const loading = ref(false);
 const loadingSave = ref(false);
 const loadingBulk = ref(false);
-const error = ref<string | null>(null);
 const auth = useAuthStore();
+const toast = useToast();
 
 // Filtros & Selección
 const search = ref('');
@@ -247,6 +283,11 @@ const filterCarrera = ref<number | string>('');
 const filterCiclo = ref<number | string>('');
 const filterSemestre = ref<number | string>('');
 const filterPago = ref('');
+const pagoOptions = [
+  { value: '', label: 'Todos' },
+  { value: 'pendiente', label: 'Con adeudo' },
+  { value: 'pagado', label: 'Al día' },
+];
 const selectedMatriculas = ref<string[]>([]);
 const selectedMatricula = ref<string | null>(null);
 
@@ -337,6 +378,19 @@ const filteredData = computed(() => {
   });
 });
 
+const filterActiveCount = computed(() =>
+  [search.value, filterCarrera.value, filterCiclo.value, filterSemestre.value, filterPago.value]
+    .filter(v => v !== '' && v !== null && v !== undefined).length
+);
+
+function clearFilters() {
+  search.value = '';
+  filterCarrera.value = '';
+  filterCiclo.value = '';
+  filterSemestre.value = '';
+  filterPago.value = '';
+}
+
 const totalPendiente = computed(() => dashboardData.value.reduce((sum, row) => sum + row.totalPendiente, 0));
 const selectedCount = computed(() => selectedMatriculas.value.length);
 const isAllFilteredSelected = computed(() => filteredData.value.length > 0 && filteredData.value.every(row => selectedMatriculas.value.includes(row.matricula)));
@@ -356,7 +410,7 @@ const availableConceptoOptionsForCuenta = computed(() => {
 
 // ============= MÉTODOS =============
 async function loadData() {
-  loading.value = true; error.value = null;
+  loading.value = true;
   try {
     const [al, cu, ci, ca, me, ob, tp, us, co] = await Promise.allSettled([
       getAlumnos(), getCuentas(), getCiclosEscolares(), getCarreras(), getMetodosPago(), getObservaciones(), getTiposObservacion(), getUsuarios(), getConceptos()
@@ -370,7 +424,7 @@ async function loadData() {
     if (tp.status === 'fulfilled') tiposObservacion.value = tp.value;
     if (us.status === 'fulfilled') usuarios.value = us.value;
     if (co.status === 'fulfilled') conceptos.value = co.value;
-  } catch (err) { console.error(err); error.value = "Error al cargar datos."; }
+  } catch (err) { console.error(err); toast.error("Error al cargar datos."); }
   finally { loading.value = false; }
 }
 
@@ -481,13 +535,21 @@ onMounted(loadData);
 </script>
 
 <style scoped>
-.dashboard-page { display: flex; flex-direction: column; gap: 2rem; }
-.dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; flex-wrap: wrap; }
-.page-title { font-size: 2.25rem; font-weight: 800; color: var(--md-sys-color-on-surface); margin: 0 0 0.5rem 0; letter-spacing: -0.02em; }
-.page-subtitle { color: var(--md-sys-color-on-surface-variant); margin: 0; }
-.header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 1.5rem; }
-.primary-buttons { display: flex; gap: 0.75rem; }
-.dashboard-main { display: flex; flex-direction: column; gap: 1.5rem; }
-.error-banner { padding: 1rem; background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); border-radius: 12px; display: flex; align-items: center; gap: 0.75rem; }
-@media (max-width: 1024px) { .dashboard-header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; align-items: flex-start; } }
+.dashboard-page { display: flex; flex-direction: column; gap: 1.25rem; }
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.page-title { font-size: 1.8rem; font-weight: 800; color: var(--md-sys-color-on-surface); margin: 0 0 0.25rem 0; letter-spacing: -0.02em; }
+.page-subtitle { color: var(--md-sys-color-on-surface-variant); margin: 0; font-size: 0.875rem; }
+.header-actions { display: flex; flex-direction: row; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.primary-buttons { display: flex; gap: 0.5rem; }
+.dashboard-main { display: flex; flex-direction: column; gap: 1rem; }
+
+@media (max-width: 1024px) { .dashboard-header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; justify-content: space-between; } }
+
+.btn-danger { color: var(--md-sys-color-error) !important; }
+.btn-danger:hover { background-color: var(--md-sys-color-error-container) !important; }
+
+.filter-search-input {
+  flex: 2 !important;
+  min-width: 180px;
+}
 </style>

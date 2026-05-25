@@ -33,16 +33,22 @@
     </header>
 
     <main class="admin-main">
-      <SectionCard icon="tune" title="Filtros" subtitle="Refina la búsqueda por rol, carrera y estado." density="comfortable">
-        <AdminUsersFilters
-          v-model:search="filters.search"
-          v-model:role="filters.role"
-          v-model:career="filters.career"
-          v-model:status="filters.status"
-          :roles="roleFilterOptions"
-          :careers="careerFilterOptions"
-        />
-      </SectionCard>
+      <FilterBar :activeCount="filterActiveCount" @clear="clearFilters">
+        <GoogleInput v-model="filters.search" label="Buscar" placeholder="Usuario o email" size="sm" />
+
+        <GoogleSelect v-model="filters.role" :options="roleSelectOptions" label="Rol" placeholder="Todos" size="sm" />
+
+        <GoogleSelect v-model="filters.career" :options="careerSelectOptions" label="Carrera" placeholder="Todas" size="sm" />
+
+        <GoogleSelect v-model="filters.status" :options="statusOptions" label="Estado" placeholder="Todos" size="sm" />
+
+        <template #actions>
+          <GoogleButton variant="text" size="sm" :loading="loadingList" @click="loadData">
+            <span class="material-symbols-outlined">refresh</span>
+            Recargar
+          </GoogleButton>
+        </template>
+      </FilterBar>
 
       <SectionCard
         icon="manage_accounts"
@@ -50,22 +56,9 @@
         subtitle="Edita rol, alcance y activación de cuentas."
         density="comfortable"
       >
-        <template #header-extra>
-          <GoogleButton variant="text" size="sm" :loading="loadingList" @click="loadData">
-            <span class="material-symbols-outlined">refresh</span>
-            Recargar
-          </GoogleButton>
-        </template>
-
-        <div v-if="successMessage" class="success-box g-page-animate">
-          <span class="material-symbols-outlined">check_circle</span>
-          {{ successMessage }}
-        </div>
-
         <AdminUsersTable
           :rows="filteredRows"
           :loading="loadingList"
-          :error="error"
           :showCreatedAt="showCreatedAt"
           @edit="onEditRow"
           @toggle-active="onToggleActive"
@@ -95,7 +88,6 @@
         :isCoordinatorRole="isCoordinatorRole"
         :isPendingFromCreateMode="isPendingFromCreateMode"
         :careerHint="careerHint"
-        :error="formError"
         @submit="submitForm"
       />
     </GoogleModal>
@@ -105,13 +97,17 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
+import { useToast } from '../composables/useToast';
 
 import SectionCard from '../components/layout/sideCard.vue';
+import FilterBar from '../components/ui/FilterBar.vue';
 import GoogleButton from '../components/ui/button.vue';
+import GoogleInput from '../components/ui/input.vue';
+import GoogleSelect from '../components/ui/select.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleChip from '../components/ui/chip.vue';
 import AdminUserForm from '../components/admin/AdminUserForm.vue';
-import AdminUsersFilters from '../components/admin/AdminUsersFilters.vue';
 import AdminUsersTable, { type AdminUserTableRow } from '../components/admin/AdminUsersTable.vue';
 
 import {
@@ -126,6 +122,9 @@ import {
   type AdminUsuarioPayload,
 } from '../services/admin-usuarios';
 import { formatCarreraLabel } from '../utils/carreras';
+
+const authStore = useAuthStore();
+const toast = useToast();
 
 type CreateMode = 'local' | 'preregister';
 
@@ -146,9 +145,6 @@ const carreras = ref<AdminCarrera[]>([]);
 
 const loadingList = ref(false);
 const loadingSave = ref(false);
-const error = ref<string | null>(null);
-const formError = ref<string | null>(null);
-const successMessage = ref<string | null>(null);
 
 const showFormModal = ref(false);
 const isEditing = ref(false);
@@ -168,7 +164,11 @@ function getEmptyForm(): UserFormState {
     email: '',
     password: '',
     id_rol: null,
-    id_carrera: null,
+    id_carrera: authStore.isAdmin
+      ? null
+      : authStore.userCareerId !== null && authStore.userCareerId !== undefined
+      ? Number(authStore.userCareerId)
+      : null,
     activo: true,
   };
 }
@@ -229,6 +229,8 @@ function getCreatedAtLabel(user: AdminUsuario): string {
 const tableRows = computed<AdminUserTableRow[]>(() => {
   return usuarios.value.map((user) => {
     const status = getUserStatus(user);
+    const isUserAdmin = normalizeText(user.rol_nombre || getRoleLabel(user)).includes('admin');
+    const canEdit = authStore.isAdmin || !isUserAdmin;
     return {
       id_usuario: Number(user.id_usuario),
       username: String(user.username ?? ''),
@@ -242,6 +244,7 @@ const tableRows = computed<AdminUserTableRow[]>(() => {
       hasGoogle: hasProvider(user, 'google'),
       hasMicrosoft: hasProvider(user, 'microsoft'),
       createdAtLabel: getCreatedAtLabel(user),
+      canEdit,
     };
   });
 });
@@ -262,10 +265,56 @@ const filteredRows = computed(() => {
 const activosCount = computed(() => tableRows.value.filter((row) => row.status === 'activo').length);
 const pendientesCount = computed(() => tableRows.value.filter((row) => row.status === 'pendiente').length);
 
-const roleOptions = computed(() => roles.value.map((role) => ({ value: role.id_rol, label: role.nombre_rol })));
-const roleFilterOptions = computed(() => roleOptions.value);
-const careerOptions = computed(() => [{ value: null, label: 'Global' }, ...carreras.value.map((career) => ({ value: career.id_carrera, label: formatCarreraLabel(career) }))]);
+const roleOptions = computed(() => {
+  let filtered = roles.value;
+  if (!authStore.isAdmin) {
+    filtered = filtered.filter((role) => !normalizeText(role.nombre_rol).includes('admin'));
+  }
+  return filtered.map((role) => ({ value: role.id_rol, label: role.nombre_rol }));
+});
+const roleFilterOptions = computed(() => roles.value.map((role) => ({ value: role.id_rol, label: role.nombre_rol })));
+const roleSelectOptions = computed(() => [
+  { value: '', label: 'Todos los roles' },
+  ...roleFilterOptions.value,
+]);
+const careerOptions = computed(() => {
+  if (!authStore.isAdmin) {
+    return carreras.value.map((career) => ({
+      value: career.id_carrera,
+      label: formatCarreraLabel(career),
+    }));
+  }
+  return [
+    { value: null, label: 'Global' },
+    ...carreras.value.map((career) => ({
+      value: career.id_carrera,
+      label: formatCarreraLabel(career),
+    })),
+  ];
+});
+const careerSelectOptions = computed(() => [
+  { value: '', label: 'Todas las carreras' },
+  ...careerOptions.value,
+]);
 const careerFilterOptions = computed(() => carreras.value.map((career) => ({ value: career.id_carrera, label: formatCarreraLabel(career) })));
+const statusOptions = [
+  { value: '', label: 'Todos' },
+  { value: 'activo', label: 'Activo' },
+  { value: 'inactivo', label: 'Inactivo' },
+  { value: 'pendiente', label: 'Pendiente' },
+];
+
+const filterActiveCount = computed(() =>
+  [filters.search, filters.role, filters.career, filters.status]
+    .filter(v => v !== '' && v !== null && v !== undefined).length
+);
+
+function clearFilters() {
+  filters.search = '';
+  filters.role = '';
+  filters.career = '';
+  filters.status = '';
+}
 
 const selectedRoleName = computed(() => {
   const found = roles.value.find((item) => Number(item.id_rol) === Number(form.value.id_rol));
@@ -284,11 +333,6 @@ const careerHint = computed(() => {
 watch(() => form.value.id_rol, () => { if (isAdminRole.value) form.value.id_carrera = null; });
 watch(() => form.value.createMode, () => { if (!isEditing.value) form.value.activo = form.value.createMode === 'local'; });
 
-function setSuccessMessage(message: string) {
-  successMessage.value = message;
-  window.setTimeout(() => { if (successMessage.value === message) successMessage.value = null; }, 2400);
-}
-
 function getApiErrorMessage(err: unknown, fallback: string): string {
   const data = (err as any)?.response?.data;
   return data?.message || data?.error || (err instanceof Error ? err.message : fallback);
@@ -297,14 +341,14 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
 async function loadData() {
   try {
     loadingList.value = true;
-    error.value = null;
+
     const [u, r, c] = await Promise.all([getAdminUsuarios(), getAdminRoles(), getAdminCarreras()]);
     usuarios.value = u; roles.value = r; carreras.value = c;
-  } catch (err) { error.value = getApiErrorMessage(err, 'Error al cargar datos.'); }
+  } catch (err) { toast.error(getApiErrorMessage(err, 'Error al cargar datos.')); }
   finally { loadingList.value = false; }
 }
 
-function resetForm() { form.value = getEmptyForm(); formError.value = null; }
+function resetForm() { form.value = getEmptyForm(); }
 function openCreateForm() { isEditing.value = false; resetForm(); showFormModal.value = true; }
 function closeForm() { showFormModal.value = false; resetForm(); }
 
@@ -312,7 +356,6 @@ function onEditRow(row: AdminUserTableRow) {
   const source = usuarios.value.find((item) => Number(item.id_usuario) === row.id_usuario);
   if (!source) return;
   isEditing.value = true;
-  formError.value = null;
   form.value = {
     id_usuario: Number(source.id_usuario),
     createMode: 'local',
@@ -320,7 +363,9 @@ function onEditRow(row: AdminUserTableRow) {
     email: String(source.email ?? ''),
     password: '',
     id_rol: Number(source.id_rol),
-    id_carrera: source.id_carrera ? Number(source.id_carrera) : null,
+    id_carrera: source.id_carrera !== null && source.id_carrera !== undefined && source.id_carrera !== ''
+      ? Number(source.id_carrera)
+      : (authStore.isAdmin ? null : (authStore.userCareerId !== null && authStore.userCareerId !== undefined ? Number(authStore.userCareerId) : null)),
     activo: getUserStatus(source) === 'activo',
   };
   showFormModal.value = true;
@@ -339,13 +384,13 @@ async function onToggleActive(row: AdminUserTableRow) {
       activo: nextState,
     });
     await loadData();
-    setSuccessMessage(nextState ? 'Usuario activado.' : 'Usuario desactivado.');
-  } catch (err) { error.value = getApiErrorMessage(err, 'Error al actualizar.'); }
+    toast.success(nextState ? 'Usuario activado.' : 'Usuario desactivado.');
+  } catch (err) { toast.error(getApiErrorMessage(err, 'Error al actualizar.')); }
   finally { loadingSave.value = false; }
 }
 
 async function submitForm() {
-  if (!form.value.username.trim() || !form.value.id_rol) { formError.value = 'Campos obligatorios faltantes.'; return; }
+  if (!form.value.username.trim() || !form.value.id_rol) { toast.error('Campos obligatorios faltantes.'); return; }
   try {
     loadingSave.value = true;
     const payload = {
@@ -361,8 +406,8 @@ async function submitForm() {
     else await createAdminUsuario(payload);
     await loadData();
     closeForm();
-    setSuccessMessage(isEditing.value ? 'Usuario actualizado.' : 'Usuario creado.');
-  } catch (err) { formError.value = getApiErrorMessage(err, 'Error al guardar.'); }
+    toast.success(isEditing.value ? 'Usuario actualizado.' : 'Usuario creado.');
+  } catch (err) { toast.error(getApiErrorMessage(err, 'Error al guardar.')); }
   finally { loadingSave.value = false; }
 }
 
@@ -417,17 +462,6 @@ onMounted(loadData);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-}
-
-.success-box {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-radius: 12px;
-  background: var(--md-sys-color-tertiary-container);
-  color: var(--md-sys-color-on-tertiary-container);
-  font-weight: 500;
 }
 
 @media (max-width: 900px) {
