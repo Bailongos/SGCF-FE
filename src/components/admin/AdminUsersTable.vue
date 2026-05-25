@@ -42,17 +42,22 @@
             </td>
             <td v-if="showCreatedAt">{{ row.createdAtLabel || '-' }}</td>
             <td class="actions-cell">
-              <button type="button" class="row-action row-action-edit" @click="emit('edit', row)">
-                Editar
-              </button>
-              <button
-                type="button"
-                class="row-action"
-                :class="row.isActive ? 'row-action-disable' : 'row-action-enable'"
-                @click="emit('toggle-active', row)"
-              >
-                {{ row.isActive ? 'Desactivar' : 'Activar' }}
-              </button>
+              <template v-if="row.canEdit !== false">
+                <button type="button" class="row-action row-action-edit" @click="emit('edit', row)">
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="row-action"
+                  :class="row.isActive ? 'row-action-disable' : 'row-action-enable'"
+                  @click="emit('toggle-active', row)"
+                >
+                  {{ row.isActive ? 'Desactivar' : 'Activar' }}
+                </button>
+              </template>
+              <template v-else>
+                <span class="no-actions-label">Sin permisos</span>
+              </template>
             </td>
           </tr>
         </tbody>
@@ -75,12 +80,13 @@ export interface AdminUserTableRow {
   hasGoogle: boolean;
   hasMicrosoft: boolean;
   createdAtLabel?: string;
+  canEdit?: boolean;
 }
 
 defineProps<{
   rows: AdminUserTableRow[];
   loading: boolean;
-  error: string | null;
+  error?: string | null;
   showCreatedAt: boolean;
 }>();
 
@@ -229,5 +235,12 @@ const emit = defineEmits<{
   border-color: var(--md-sys-color-error);
   background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-on-error-container);
+}
+
+.no-actions-label {
+  font-size: 0.75rem;
+  color: var(--md-sys-color-outline);
+  font-style: italic;
+  padding: 0.35rem 0.55rem;
 }
 </style>

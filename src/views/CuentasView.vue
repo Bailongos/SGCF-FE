@@ -37,10 +37,10 @@
     </header>
 
     <!-- Tabla genérica googlesca -->
-    <GoogleTable :rows="cuentas" :columns="cuentasColumns" rowKey="id_cuenta" :loading="loadingList" :error="error"
+    <GoogleTable :rows="cuentas" :columns="cuentasColumns" rowKey="id_cuenta" :loading="loadingList"
       v-model:search="search" title="Listado de cuentas" subtitle="Consulta, edita o elimina adeudos registrados."
       icon="request_quote" :showReload="true" :useDefaultActions="true" :searchKeys="['matricula', 'concepto']"
-      :successMessage="tableSuccessMessage" emptyMessage="No hay cuentas que coincidan con el filtro."
+      emptyMessage="No hay cuentas que coincidan con el filtro."
       @reload="loadCuentas" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar cuenta -->
@@ -96,6 +96,10 @@
         </p>
       </form>
     </GoogleModal>
+
+    <ConfirmModal v-model="showDeleteConfirm" title="Eliminar cuenta"
+      :message="`¿Eliminar la cuenta #${deleteTarget?.id_cuenta}?`" variant="danger" confirmText="Eliminar"
+      @confirm="onDeleteConfirm" />
   </section>
 </template>
 
@@ -103,12 +107,14 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useToast } from '../composables/useToast';
 
 import GoogleButton from '../components/ui/button.vue';
 import GoogleInput from '../components/ui/input.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
 import GoogleSelect, { type SelectOption } from '../components/ui/select.vue';
+import ConfirmModal from '../components/modal/ConfirmModal.vue';
 
 import {
   getCuentas,
@@ -131,6 +137,7 @@ import {
 import { getConceptos, type Concepto } from '../services/conceptos';
 
 const auth = useAuthStore();
+const toast = useToast();
 const cuentas = ref<Cuenta[]>([]);
 const alumnos = ref<Alumno[]>([]);
 const ciclos = ref<CicloEscolar[]>([]);
@@ -149,6 +156,9 @@ const tableSuccessMessage = ref<string | null>(null);
 
 // Modal formulario
 const showFormModal = ref(false);
+
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<Cuenta | null>(null);
 
 interface CuentaForm extends CuentaPayload {
   id_cuenta: number | null;
@@ -448,7 +458,7 @@ async function loadCuentas() {
     cuentas.value = resp;
   } catch (e) {
     console.error('Error al cargar cuentas', e);
-    error.value = 'Error al cargar cuentas';
+    toast.error('Error al cargar cuentas');
   } finally {
     loadingList.value = false;
   }
@@ -487,14 +497,14 @@ async function saveCuenta() {
     };
 
     if (!payload.matricula || !payload.id_ciclo || !payload.concepto) {
-      error.value =
-        'La matrícula, el concepto y el ciclo escolar son obligatorios.';
+      toast.error(
+        'La matrícula, el concepto y el ciclo escolar son obligatorios.');
       return;
     }
 
     const duplicate = findDuplicateCuenta(payload, isEditing.value ? form.value.id_cuenta : null);
     if (duplicate) {
-      error.value = `Ya existe la cuenta #${duplicate.id_cuenta} para ${payload.matricula}, ${payload.concepto} y ciclo ${getCicloNombre(payload.id_ciclo)}.`;
+      toast.error(`Ya existe la cuenta #${duplicate.id_cuenta} para ${payload.matricula}, ${payload.concepto} y ciclo ${getCicloNombre(payload.id_ciclo)}.`);
       return;
     }
 
@@ -503,29 +513,29 @@ async function saveCuenta() {
       cuentas.value = cuentas.value.map((c) =>
         c.id_cuenta === updated.id_cuenta ? updated : c,
       );
-      tableSuccessMessage.value = 'Cuenta actualizada correctamente';
+      toast.success('Cuenta actualizada correctamente');
     } else {
       const created = await createCuenta(payload);
       cuentas.value.push(created);
-      tableSuccessMessage.value = 'Cuenta creada correctamente';
+      toast.success('Cuenta creada correctamente');
     }
 
     resetForm();
   } catch (e) {
     console.error('Error al guardar cuenta', e);
     if (isConceptConstraintError(e)) {
-      error.value = 'El backend rechazo el concepto por la restriccion cuentas_por_cobrar_concepto_check. Revisa los conceptos permitidos en BD.';
+      toast.error('El backend rechazo el concepto por la restriccion cuentas_por_cobrar_concepto_check. Revisa los conceptos permitidos en BD.');
       return;
     }
 
     if (isDuplicateCuentaError(e)) {
-      error.value = 'Cuenta duplicada: ya existe una cuenta con la misma matricula, concepto y ciclo.';
+      toast.error('Cuenta duplicada: ya existe una cuenta con la misma matricula, concepto y ciclo.');
       return;
     }
 
-    error.value = isEditing.value
+    toast.error(isEditing.value
       ? `Error al actualizar la cuenta: ${getApiErrorMessage(e)}`
-      : `Error al crear la cuenta: ${getApiErrorMessage(e)}`;
+      : `Error al crear la cuenta: ${getApiErrorMessage(e)}`);
   } finally {
     loadingSave.value = false;
   }
@@ -565,9 +575,15 @@ function onEdit(cuenta: Cuenta) {
 }
 
 // Eliminar desde la tabla
-async function onDelete(row: Cuenta) {
+function onDelete(row: Cuenta) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
+}
+
+async function onDeleteConfirm() {
+  const row = deleteTarget.value;
+  if (!row) return;
   const id_cuenta = row.id_cuenta;
-  if (!confirm(`¿Eliminar cuenta #${id_cuenta}?`)) return;
   try {
     await deleteCuenta(id_cuenta);
     cuentas.value = cuentas.value.filter(
@@ -576,10 +592,13 @@ async function onDelete(row: Cuenta) {
     if (form.value.id_cuenta === id_cuenta) {
       resetForm();
     }
-    tableSuccessMessage.value = 'Cuenta eliminada correctamente';
+    toast.success('Cuenta eliminada correctamente');
   } catch (e) {
     console.error('Error al eliminar cuenta', e);
-    error.value = 'Error al eliminar la cuenta';
+    toast.error('Error al eliminar la cuenta');
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
   }
 }
 

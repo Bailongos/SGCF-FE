@@ -26,10 +26,10 @@
         </header>
 
         <!-- Tabla genérica googlesca -->
-        <GoogleTable :rows="conceptos" :columns="conceptosColumns" rowKey="clave" :loading="loadingList" :error="error"
+        <GoogleTable :rows="conceptos" :columns="conceptosColumns" rowKey="clave" :loading="loadingList"
             v-model:search="search"
             title="Listado de conceptos" subtitle="Consulta, edita o elimina conceptos de pago." icon="sell"
-            :showReload="true" :useDefaultActions="true" :successMessage="tableSuccessMessage"
+            :showReload="true" :useDefaultActions="true"
             emptyMessage="No hay conceptos que coincidan con el filtro." @reload="loadConceptos" @edit="onEdit"
             @delete="onDelete" />
 
@@ -91,16 +91,22 @@
                 </p>
             </form>
         </GoogleModal>
+
+        <ConfirmModal v-model="showDeleteConfirm" title="Eliminar concepto"
+          :message="`¿Eliminar concepto ${deleteTarget?.clave}?`" variant="danger" confirmText="Eliminar"
+          @confirm="onDeleteConfirm" />
     </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useToast } from '../../composables/useToast';
 
 import GoogleButton from '../../components/ui/button.vue';
 import GoogleInput from '../../components/ui/input.vue';
 import GoogleModal from '../../components/modal/modal.vue';
 import GoogleTable, { type TableColumn } from '../../components/ui/table.vue';
+import ConfirmModal from '../../components/modal/ConfirmModal.vue';
 
 import {
     getConceptos,
@@ -112,19 +118,18 @@ import {
 } from '../../services/conceptos';
 
 const emit = defineEmits(['update']);
+const toast = useToast();
 
 // ---- STATE ----
 const conceptos = ref<Concepto[]>([]);
 const loadingList = ref(false);
 const loadingSave = ref(false);
-const error = ref<string | null>(null);
 
 const isEditing = ref(false);
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<Concepto | null>(null);
 const addAnother = ref(false);
 const search = ref('');
-
-// para mostrar mensajes de éxito dentro de la tabla (toast interno)
-const tableSuccessMessage = ref<string | null>(null);
 
 // Modal formulario
 const showFormModal = ref(false);
@@ -200,13 +205,12 @@ const conceptosColumns: TableColumn[] = [
 // ---- API CALLS ----
 async function loadConceptos() {
     try {
-        error.value = null;
         loadingList.value = true;
         const resp = await getConceptos();
         conceptos.value = resp;
     } catch (e) {
         console.error('[ConceptosManager] Error al cargar conceptos', e);
-        error.value = 'Error al cargar conceptos';
+        toast.error('Error al cargar conceptos');
     } finally {
         loadingList.value = false;
     }
@@ -222,8 +226,6 @@ function openCreateForm() {
 // Lógica central para guardar/actualizar
 async function saveConcepto() {
     try {
-        error.value = null;
-        tableSuccessMessage.value = null;
         loadingSave.value = true;
 
         if (isEditing.value) {
@@ -235,14 +237,14 @@ async function saveConcepto() {
             };
 
             if (!payload.clave || !payload.descripcion) {
-                error.value = 'La clave y la descripción son obligatorias.';
-                return;
+                toast.error('La clave y la descripción son obligatorias.');
+                return false;
             }
             const updated = await updateConcepto(payload.clave, payload);
             conceptos.value = conceptos.value.map((c) =>
                 c.clave === updated.clave ? updated : c,
             );
-            tableSuccessMessage.value = 'Concepto actualizado correctamente';
+            toast.success('Concepto actualizado correctamente');
         } else {
             // Guardar multiples
             const newItems = [];
@@ -259,21 +261,23 @@ async function saveConcepto() {
             }
 
             if (newItems.length === 0) {
-                error.value = 'Debe rellenar la clave y descripcion para guardar.';
-                return;
+                toast.error('Debe rellenar la clave y descripcion para guardar.');
+                return false;
             }
 
             conceptos.value.push(...newItems);
-            tableSuccessMessage.value = `${newItems.length} concepto(s) creado(s) correctamente`;
+            toast.success(`${newItems.length} concepto(s) creado(s) correctamente`);
         }
 
         emit('update');
         resetForm();
+        return true;
     } catch (e) {
         console.error('[ConceptosManager] Error al guardar concepto', e);
-        error.value = isEditing.value
+        toast.error(isEditing.value
             ? 'Error al actualizar el concepto'
-            : 'Error al crear el/los concepto(s)';
+            : 'Error al crear el/los concepto(s)');
+        return false;
     } finally {
         loadingSave.value = false;
     }
@@ -281,8 +285,8 @@ async function saveConcepto() {
 
 // submit desde el modal (botón footer o Enter en el form)
 async function handleFormSubmit() {
-    await saveConcepto();
-    if (!error.value) {
+    const ok = await saveConcepto();
+    if (ok) {
         showFormModal.value = false;
     }
 }
@@ -306,23 +310,32 @@ function onEdit(concepto: Concepto) {
 }
 
 // Eliminar desde la tabla
-async function onDelete(row: Concepto) {
-    const clave = row.clave;
-    if (!confirm(`¿Eliminar concepto ${clave}?`)) return;
-    try {
-        await deleteConcepto(clave);
-        conceptos.value = conceptos.value.filter(
-            (c) => c.clave !== clave,
-        );
-        if (form.value.clave === clave) {
-            resetForm();
-        }
-        tableSuccessMessage.value = 'Concepto eliminado correctamente';
-        emit('update');
-    } catch (e) {
-        console.error('[ConceptosManager] Error al eliminar concepto', e);
-        error.value = 'Error al eliminar el concepto';
+function onDelete(row: Concepto) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
+}
+
+async function onDeleteConfirm() {
+  const row = deleteTarget.value;
+  if (!row) return;
+  const clave = row.clave;
+  try {
+    await deleteConcepto(clave);
+    conceptos.value = conceptos.value.filter(
+      (c) => c.clave !== clave,
+    );
+    if (form.value.clave === clave) {
+      resetForm();
     }
+    toast.success('Concepto eliminado correctamente');
+    emit('update');
+  } catch (e) {
+    console.error('[ConceptosManager] Error al eliminar concepto', e);
+    toast.error('Error al eliminar el concepto');
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
+  }
 }
 
 function animateEntrance() {
@@ -331,25 +344,22 @@ function animateEntrance() {
 
     if (tableRows.length === 0 && chips.length === 0) return;
 
-    import('animejs').then((m: any) => {
-        const anime = m.default || m;
+    import('animejs').then(({ animate, stagger }) => {
         if (tableRows.length > 0) {
-            anime({
-                targets: '.g-table tbody tr',
+            animate('.g-table tbody tr', {
                 opacity: [0, 1],
                 translateX: [-12, 0],
-                delay: (_el: any, i: number) => i * 35,
+                delay: stagger(35),
                 duration: 650,
                 easing: 'easeOutQuart'
             });
         }
 
         if (chips.length > 0) {
-            anime({
-                targets: '.chip',
+            animate('.chip', {
                 scale: [0.8, 1],
                 opacity: [0, 1],
-                delay: (_el: any, i: number) => 150 + (i * 55),
+                delay: stagger(55, { start: 150 }),
                 duration: 550,
                 easing: 'easeOutElastic(1, .8)'
             });

@@ -1,28 +1,40 @@
-<!-- src/App.vue -->
 <template>
   <div class="app" :class="{ dark: isDark }">
-    <!-- Header Componentizado -->
     <Header v-if="auth.isAuthenticated" :isDark="isDark" @toggle-theme="toggleTheme" />
 
     <main class="app-main">
       <RouterView v-slot="{ Component, route }">
-        <transition :css="false" @before-enter="onBeforeEnter" @enter="onEnter" @leave="onLeave" mode="out-in">
+        <transition name="g-route" mode="out-in">
           <div class="route-view-shell" :key="route.fullPath">
             <component :is="Component" />
           </div>
         </transition>
       </RouterView>
     </main>
+
+    <GlobalToast />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
+import { useToast } from './composables/useToast';
+import { useSessionTimeout } from './composables/useSessionTimeout';
 import Header from './components/layout/header.vue';
+import GlobalToast from './components/modal/GlobalToast.vue';
 
 const auth = useAuthStore();
+const router = useRouter();
+const toast = useToast();
 const isDark = ref(false);
+
+useSessionTimeout(auth.isAuthenticated, () => {
+  auth.logout();
+  toast.info('Sesión expirada por inactividad.');
+  router.push('/login');
+});
 
 const toggleTheme = () => {
   isDark.value = !isDark.value;
@@ -42,34 +54,6 @@ onMounted(() => {
   const savedTheme = localStorage.getItem('theme');
   isDark.value = savedTheme === 'dark';
 });
-
-// Animaciones de página optimizadas
-const onBeforeEnter = (el: any) => {
-  el.style.opacity = 0;
-  el.style.transform = 'translateY(12px)';
-};
-
-const onEnter = (el: any, done: () => void) => {
-  import('animejs').then(({ animate }) => {
-    animate(el, {
-      opacity: [0, 1],
-      translateY: [12, 0],
-      duration: 500,
-      easing: 'easeOutQuart'
-    }).then(done);
-  });
-};
-
-const onLeave = (el: any, done: () => void) => {
-  import('animejs').then(({ animate }) => {
-    animate(el, {
-      opacity: 0,
-      translateY: -12,
-      duration: 300,
-      easing: 'easeInQuart'
-    }).then(done);
-  });
-};
 </script>
 
 <style scoped>
@@ -91,7 +75,24 @@ const onLeave = (el: any, done: () => void) => {
   width: 100%;
 }
 
-/* Scrollbar personalizada minimalista */
+.g-route-enter-active {
+  animation: gRouteIn 0.2s ease-out;
+}
+
+.g-route-leave-active {
+  animation: gRouteOut 0.12s ease-in;
+}
+
+@keyframes gRouteIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gRouteOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 :global(::-webkit-scrollbar) {
   width: 8px;
   height: 8px;
@@ -103,7 +104,7 @@ const onLeave = (el: any, done: () => void) => {
 
 :global(::-webkit-scrollbar-thumb) {
   background: var(--md-sys-color-surface-variant);
-  border-radius: 10px;
+  border-radius: 4px;
 }
 
 :global(::-webkit-scrollbar-thumb:hover) {

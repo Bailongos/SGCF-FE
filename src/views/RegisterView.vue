@@ -45,16 +45,6 @@
           required
         />
 
-        <div v-if="error" class="error-box">
-          <span class="material-symbols-outlined">error</span>
-          <span>{{ error }}</span>
-        </div>
-
-        <div v-if="success" class="success-box">
-          <span class="material-symbols-outlined">check_circle</span>
-          <span>{{ success }}</span>
-        </div>
-
         <GoogleButton type="submit" class="register-submit-btn" :loading="loading">
           Registrar usuario
         </GoogleButton>
@@ -77,10 +67,11 @@ import { RouterLink } from 'vue-router';
 import GoogleInput from '../components/ui/input.vue';
 import GoogleButton from '../components/ui/button.vue';
 import { register } from '../services/auth';
+import { useToast } from '../composables/useToast';
+
+const toast = useToast();
 
 const loading = ref(false);
-const error = ref<string | null>(null);
-const success = ref<string | null>(null);
 const defaultPendingRoleId = 6;
 const defaultCareerId = 7;
 
@@ -99,32 +90,30 @@ function resetForm() {
 }
 
 function validateForm(): boolean {
-  error.value = null;
-
   const username = form.username.trim();
   const email = form.email.trim();
   const password = form.password;
   const confirmPassword = form.confirmPassword;
 
   if (!username) {
-    error.value = 'El usuario es obligatorio.';
+    toast.error('El usuario es obligatorio.');
     return false;
   }
 
   if (password.length < 8) {
-    error.value = 'La contrasena debe tener minimo 8 caracteres.';
+    toast.error('La contrasena debe tener minimo 8 caracteres.');
     return false;
   }
 
   if (password !== confirmPassword) {
-    error.value = 'Las contrasenas no coinciden.';
+    toast.error('Las contrasenas no coinciden.');
     return false;
   }
 
   if (email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      error.value = 'El email no tiene un formato valido.';
+      toast.error('El email no tiene un formato valido.');
       return false;
     }
   }
@@ -167,8 +156,6 @@ async function handleRegister() {
   if (!validateForm()) return;
 
   loading.value = true;
-  error.value = null;
-  success.value = null;
 
   try {
     const response = await register({
@@ -180,14 +167,15 @@ async function handleRegister() {
       activo: false,
     });
 
-    success.value =
+    toast.success(
       response?.message ||
-      'Registro exitoso. Tu cuenta fue creada como pendiente e inactiva. Un administrador debe activarla.';
+      'Registro exitoso. Tu cuenta fue creada como pendiente e inactiva. Un administrador debe activarla.',
+    );
 
     resetForm();
   } catch (err) {
     console.error(err);
-    error.value = parseError(err);
+    toast.error(parseError(err));
   } finally {
     loading.value = false;
   }
@@ -273,28 +261,6 @@ async function handleRegister() {
 .register-submit-btn {
   width: 100%;
   margin-top: 0.35rem;
-}
-
-.error-box,
-.success-box {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  border-radius: 8px;
-  padding: 0.65rem 0.75rem;
-  font-size: 0.85rem;
-}
-
-.error-box {
-  color: var(--md-sys-color-on-error-container);
-  background: var(--md-sys-color-error-container);
-  border: 1px solid var(--md-sys-color-error);
-}
-
-.success-box {
-  color: var(--md-sys-color-on-tertiary-container);
-  background: var(--md-sys-color-tertiary-container);
-  border: 1px solid var(--md-sys-color-outline-variant);
 }
 
 .register-footer-actions {

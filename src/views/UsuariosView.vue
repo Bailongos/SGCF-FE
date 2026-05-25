@@ -33,10 +33,10 @@
 
     <!-- Tabla genérica googlesca -->
     <GoogleTable :rows="usuariosRows" :columns="usuariosColumns" rowKey="id_usuario" :loading="loadingList"
-      :error="error" v-model:search="search" title="Listado de usuarios"
+      v-model:search="search" title="Listado de usuarios"
       subtitle="Consulta, edita o elimina usuarios registrados en el sistema." icon="manage_accounts" :showReload="true"
       :useDefaultActions="true" :searchKeys="['username', 'rolNombre', 'carreraNombre']"
-      :successMessage="tableSuccessMessage" emptyMessage="No hay usuarios que coincidan con el filtro."
+      emptyMessage="No hay usuarios que coincidan con el filtro."
       @reload="loadUsuarios" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar usuario -->
@@ -74,12 +74,17 @@
         </div>
       </form>
     </GoogleModal>
+
+    <ConfirmModal v-model="showDeleteConfirm" title="Eliminar usuario"
+      :message="`¿Eliminar el usuario #${deleteTarget?.id_usuario}?`" variant="danger" confirmText="Eliminar"
+      @confirm="onDeleteConfirm" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useToast } from '../composables/useToast';
 
 import GoogleButton from '../components/ui/button.vue';
 import GoogleInput from '../components/ui/input.vue';
@@ -87,6 +92,7 @@ import GoogleModal from '../components/modal/modal.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
 import GoogleSelect, { type SelectOption } from '../components/ui/select.vue';
 import GoogleChip from '../components/ui/chip.vue';
+import ConfirmModal from '../components/modal/ConfirmModal.vue';
 
 import {
   getUsuarios,
@@ -101,6 +107,7 @@ import { getCarreras, type Carrera } from '../services/carreras';
 import { getRoles, type Rol } from '../services/roles';
 import { formatCarreraLabel } from '../utils/carreras';
 
+const toast = useToast();
 const usuarios = ref<Usuario[]>([]);
 const carreras = ref<Carrera[]>([]);
 const roles = ref<Rol[]>([]);
@@ -111,10 +118,12 @@ const error = ref<string | null>(null);
 
 const search = ref('');
 const isEditing = ref(false);
-const tableSuccessMessage = ref<string | null>(null);
 
 // Modal
 const showFormModal = ref(false);
+
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<Usuario | null>(null);
 
 interface UsuarioForm extends UsuarioPayload {
   id_usuario: number | null;
@@ -248,7 +257,7 @@ async function loadUsuarios() {
     usuarios.value = await getUsuarios();
   } catch (e) {
     console.error(e);
-    error.value = 'Error al cargar usuarios';
+    toast.error('Error al cargar usuarios');
   } finally {
     loadingList.value = false;
   }
@@ -273,7 +282,7 @@ async function saveUsuario() {
       String(form.value.id_carrera).trim() !== '';
 
     if (selectedRol?.nombre_rol === 'Coordinador' && !hasCareerAssigned) {
-      error.value = 'Coordinadores deben tener una carrera asignada.';
+      toast.error('Coordinadores deben tener una carrera asignada.');
       return;
     }
 
@@ -290,7 +299,7 @@ async function saveUsuario() {
         : payloadBase;
 
     if (!payload.username || !payload.id_rol) {
-      error.value = 'Usuario y rol son obligatorios.';
+      toast.error('Usuario y rol son obligatorios.');
       return;
     }
 
@@ -299,18 +308,18 @@ async function saveUsuario() {
       usuarios.value = usuarios.value.map((u) =>
         u.id_usuario === updated.id_usuario ? updated : u,
       );
-      tableSuccessMessage.value = 'Usuario actualizado correctamente';
+      toast.success('Usuario actualizado correctamente');
     } else {
       const created = await createUsuario(payload);
       usuarios.value.push(created);
-      tableSuccessMessage.value = 'Usuario creado correctamente';
+      toast.success('Usuario creado correctamente');
     }
 
     resetForm();
   } catch (e: any) {
     console.error(e);
     const backendMsg = e?.response?.data?.message ?? e?.message ?? 'Error desconocido';
-    error.value = `Error al guardar el usuario: ${backendMsg}`;
+    toast.error(`Error al guardar el usuario: ${backendMsg}`);
   } finally {
     loadingSave.value = false;
   }
@@ -339,16 +348,25 @@ function onEdit(row: Usuario) {
   showFormModal.value = true;
 }
 
-async function onDelete(row: Usuario) {
+function onDelete(row: Usuario) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
+}
+
+async function onDeleteConfirm() {
+  const row = deleteTarget.value;
+  if (!row) return;
   const id_usuario = row.id_usuario;
-  if (!confirm(`¿Eliminar usuario #${id_usuario}?`)) return;
   try {
     await deleteUsuario(id_usuario);
     usuarios.value = usuarios.value.filter((u) => u.id_usuario !== id_usuario);
-    tableSuccessMessage.value = 'Usuario eliminado correctamente';
+    toast.success('Usuario eliminado correctamente');
   } catch (e: any) {
     console.error(e);
-    error.value = `Error al eliminar el usuario: ${e?.message}`;
+    toast.error(`Error al eliminar el usuario: ${e?.message}`);
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
   }
 }
 

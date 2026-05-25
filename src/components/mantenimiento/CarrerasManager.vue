@@ -21,10 +21,10 @@
       </div>
     </header>
 
-    <GoogleTable :rows="carreras" :columns="carreraColumns" rowKey="id_carrera" :loading="loadingList" :error="error"
+    <GoogleTable :rows="carreras" :columns="carreraColumns" rowKey="id_carrera" :loading="loadingList"
       v-model:search="search" title="Listado de Planes de Estudio" subtitle="Consulta y gestiona los planes actuales."
       icon="school" :showReload="true" :useDefaultActions="true" :searchKeys="['clave', 'nombre']"
-      :successMessage="tableSuccessMessage" @reload="loadCarreras" @edit="onEdit" @delete="onDelete" />
+      @reload="loadCarreras" @edit="onEdit" @delete="onDelete" />
 
     <GoogleModal v-model="showFormModal" :icon="isEditing ? 'edit' : 'school'"
       :title="isEditing ? 'Editar Plan' : 'Nuevo Plan'" subtitle="Define clave, nombre y duración oficial del plan."
@@ -70,11 +70,16 @@
         </p>
       </form>
     </GoogleModal>
+
+    <ConfirmModal v-model="showDeleteConfirm" title="Eliminar plan de estudio"
+      :message="`¿Eliminar carrera con ID ${deleteTarget?.id_carrera}?`" variant="danger" confirmText="Eliminar"
+      @confirm="onDeleteConfirm" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useToast } from '../../composables/useToast';
 
 import GoogleButton from '../../components/ui/button.vue';
 import GoogleInput from '../../components/ui/input.vue';
@@ -90,19 +95,20 @@ import {
   type CarreraCreate,
 } from '../../services/carreras';
 import { isValidCarreraClave, normalizeCarreraClave } from '../../utils/carreras';
+import ConfirmModal from '../../components/modal/ConfirmModal.vue';
 
 const emit = defineEmits(['update']);
+const toast = useToast();
 
 const carreras = ref<Carrera[]>([]);
 const loadingList = ref(false);
 const loadingSave = ref(false);
-const error = ref<string | null>(null);
 
 const isEditing = ref(false);
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<Carrera | null>(null);
 const editingId = ref<number | null>(null);
 const search = ref('');
-
-const tableSuccessMessage = ref<string | null>(null);
 
 const showFormModal = ref(false);
 
@@ -155,12 +161,12 @@ function buildPayload(source: Partial<CarreraCreate>, rowLabel = 'La carrera'): 
   const duracion_semestres = Number(source.duracion_semestres) || 1;
 
   if (!clave || !nombre) {
-    error.value = `${rowLabel} requiere clave y nombre.`;
+    toast.error(`${rowLabel} requiere clave y nombre.`);
     return null;
   }
 
   if (!isValidCarreraClave(clave)) {
-    error.value = `${rowLabel} tiene una clave inválida. Usa solo letras, números y guion medio.`;
+    toast.error(`${rowLabel} tiene una clave inválida. Usa solo letras, números y guion medio.`);
     return null;
   }
 
@@ -173,12 +179,11 @@ function buildPayload(source: Partial<CarreraCreate>, rowLabel = 'La carrera'): 
 
 async function loadCarreras() {
   try {
-    error.value = null;
     loadingList.value = true;
     carreras.value = await getCarreras();
   } catch (e) {
     console.error(e);
-    error.value = 'Error al cargar carreras';
+    toast.error('Error al cargar carreras');
   } finally {
     loadingList.value = false;
   }
@@ -192,35 +197,34 @@ function openCreateForm() {
 
 async function saveCarrera() {
   try {
-    error.value = null;
     loadingSave.value = true;
 
     if (isEditing.value && editingId.value !== null) {
       const payload = buildPayload(form.value, 'La carrera');
-      if (!payload) return;
+      if (!payload) return false;
 
       const hasDuplicateClave = carreras.value.some(
         (c) => c.id_carrera !== editingId.value && normalizeCarreraClave(c.clave) === payload.clave,
       );
 
       if (hasDuplicateClave) {
-        error.value = `La clave ${payload.clave} ya existe en otra carrera.`;
-        return;
+        toast.error(`La clave ${payload.clave} ya existe en otra carrera.`);
+        return false;
       }
 
       const updated = await updateCarrera(editingId.value, payload);
       carreras.value = carreras.value.map((c) =>
         c.id_carrera === editingId.value ? updated : c,
       );
-      tableSuccessMessage.value = 'Carrera actualizada correctamente';
+      toast.success('Carrera actualizada correctamente');
     } else {
       const filledRows = formsList.value.filter(
         (item) => item.clave.trim() || item.nombre.trim(),
       );
 
       if (!filledRows.length) {
-        error.value = 'Debes capturar al menos una carrera con clave y nombre.';
-        return;
+        toast.error('Debes capturar al menos una carrera con clave y nombre.');
+        return false;
       }
 
       const payloads: CarreraCreate[] = [];
@@ -234,16 +238,16 @@ async function saveCarrera() {
         if (!item) continue;
 
         const payload = buildPayload(item, `La carrera ${index + 1}`);
-        if (!payload) return;
+        if (!payload) return false;
 
         if (seenClaves.has(payload.clave)) {
-          error.value = `La clave ${payload.clave} está repetida en el formulario.`;
-          return;
+          toast.error(`La clave ${payload.clave} está repetida en el formulario.`);
+          return false;
         }
 
         if (existingClaves.has(payload.clave)) {
-          error.value = `La clave ${payload.clave} ya existe en el catálogo.`;
-          return;
+          toast.error(`La clave ${payload.clave} ya existe en el catálogo.`);
+          return false;
         }
 
         seenClaves.add(payload.clave);
@@ -257,24 +261,26 @@ async function saveCarrera() {
       }
 
       carreras.value.push(...newCarreras);
-      tableSuccessMessage.value = `${newCarreras.length} carrera(s) creada(s) correctamente`;
+      toast.success(`${newCarreras.length} carrera(s) creada(s) correctamente`);
     }
 
     emit('update');
     resetForm();
+    return true;
   } catch (e) {
     console.error(e);
-    error.value = isEditing.value
+    toast.error(isEditing.value
       ? 'Error al actualizar carrera'
-      : 'Error al crear la(s) carrera(s)';
+      : 'Error al crear la(s) carrera(s)');
+    return false;
   } finally {
     loadingSave.value = false;
   }
 }
 
 async function handleFormSubmit() {
-  await saveCarrera();
-  if (!error.value) {
+  const ok = await saveCarrera();
+  if (ok) {
     showFormModal.value = false;
   }
 }
@@ -297,21 +303,29 @@ function onEdit(carrera: Carrera) {
   showFormModal.value = true;
 }
 
-async function onDelete(row: Carrera) {
-  const id = row.id_carrera;
-  if (!confirm(`¿Eliminar carrera con ID ${id}?`)) return;
+function onDelete(row: Carrera) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
+}
 
+async function onDeleteConfirm() {
+  const row = deleteTarget.value;
+  if (!row) return;
+  const id = row.id_carrera;
   try {
     await deleteCarrera(id);
     carreras.value = carreras.value.filter((c) => c.id_carrera !== id);
     if (editingId.value === id) {
       resetForm();
     }
-    tableSuccessMessage.value = 'Carrera eliminada correctamente';
+    toast.success('Carrera eliminada correctamente');
     emit('update');
   } catch (e) {
     console.error(e);
-    error.value = 'Error al eliminar carrera';
+    toast.error('Error al eliminar carrera');
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
   }
 }
 
@@ -321,25 +335,22 @@ function animateEntrance() {
 
   if (tableRows.length === 0 && chips.length === 0) return;
 
-  import('animejs').then((m: any) => {
-    const anime = m.default || m;
+  import('animejs').then(({ animate, stagger }) => {
     if (tableRows.length > 0) {
-      anime({
-        targets: '.g-table tbody tr',
+      animate('.g-table tbody tr', {
         opacity: [0, 1],
         translateX: [-12, 0],
-        delay: (_el: any, i: number) => i * 40,
+        delay: stagger(40),
         duration: 700,
         easing: 'easeOutQuart'
       });
     }
 
     if (chips.length > 0) {
-      anime({
-        targets: '.chip',
+      animate('.chip', {
         scale: [0.8, 1],
         opacity: [0, 1],
-        delay: (_el: any, i: number) => 200 + (i * 60),
+        delay: stagger(60, { start: 200 }),
         duration: 600,
         easing: 'easeOutElastic(1, .8)'
       });

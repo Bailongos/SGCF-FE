@@ -47,7 +47,7 @@
       <div class="divider"></div>
       <div class="debt-header-row">
         <p class="font-bold">Cuentas por cobrar iniciales (opcional)</p>
-        <GoogleButton type="button" variant="text" size="sm" @click="addAdeudo" style="color: #1a73e8;">
+        <GoogleButton type="button" variant="text" size="sm" @click="addAdeudo">
           <span class="material-symbols-outlined">add_circle</span>
           Añadir concepto
         </GoogleButton>
@@ -273,7 +273,7 @@ function onConceptoChange(val: string | number | null, adeudo: AdeudoFormModel) 
 
 .divider {
   height: 1px;
-  background: #e0e0e0;
+  background: var(--md-sys-color-outline-variant);
   margin: 1.5rem 0;
 }
 
@@ -286,18 +286,18 @@ function onConceptoChange(val: string | number | null, adeudo: AdeudoFormModel) 
 .border-card {
   display: flex;
   align-items: center;
-  background: #ffffff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  border: 1px solid #e8eaed;
+  background: var(--md-sys-color-surface);
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--md-sys-color-outline);
   gap: 1rem;
   margin-bottom: 1.25rem;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.1);
+  box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s;
 }
 
 .border-card:hover {
-  box-shadow: 0 4px 12px rgba(60, 64, 67, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .adeudo-card .adeudo-grid {
@@ -337,22 +337,22 @@ function onConceptoChange(val: string | number | null, adeudo: AdeudoFormModel) 
 
 .hint {
   font-size: 0.75rem;
-  color: #a0a4a8;
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 0.15rem;
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 0.15rem 0.6rem;
   font-size: 0.78rem;
   border: 1px solid transparent;
 }
 
 .chip-primary {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
-  color: #1a73e8;
+  background: var(--md-sys-color-primary-container);
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary-container);
 }
 </style>

@@ -130,7 +130,7 @@ const props = withDefaults(defineProps<{
   alumnos: Alumno[];
   carreras: Carrera[];
   loading: boolean;
-  error: string | null;
+  error?: string | null;
   search: string;
 
   // Para reutilizar el componente en otros lados

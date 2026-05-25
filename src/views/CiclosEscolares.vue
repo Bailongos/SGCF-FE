@@ -37,11 +37,11 @@
     </header>
 
     <!-- Tabla genérica googlesca -->
-    <GoogleTable :rows="ciclos" :columns="ciclosColumns" rowKey="id_ciclo" :loading="loadingList" :error="error"
+    <GoogleTable :rows="ciclos" :columns="ciclosColumns" rowKey="id_ciclo" :loading="loadingList"
       v-model:search="search" title="Listado de ciclos escolares"
       subtitle="Consulta, edita o elimina ciclos registrados. Se recomienda tener solo un ciclo marcado como actual."
       icon="date_range" :showReload="true" :useDefaultActions="true" :searchKeys="['nombre']"
-      :successMessage="tableSuccessMessage" emptyMessage="No hay ciclos que coincidan con el filtro."
+      emptyMessage="No hay ciclos que coincidan con el filtro."
       @reload="loadCiclos" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar ciclo con 2 datepickers -->
@@ -67,18 +67,24 @@
         </label>
       </form>
     </GoogleModal>
+
+    <ConfirmModal v-model="showDeleteConfirm" title="Eliminar ciclo escolar"
+      :message="`¿Eliminar el ciclo escolar #${deleteTarget?.id_ciclo}?`" variant="danger" confirmText="Eliminar"
+      @confirm="onDeleteConfirm" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useToast } from '../composables/useToast';
 
 import GoogleButton from '../components/ui/button.vue';
 import GoogleInput from '../components/ui/input.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
 import GoogleCalendar from '../components/ui/calendar.vue';
+import ConfirmModal from '../components/modal/ConfirmModal.vue';
 
 import {
   getCiclosEscolares,
@@ -90,6 +96,7 @@ import {
 } from '../services/ciclos-escolares';
 
 // ---- STATE ----
+const toast = useToast();
 const ciclos = ref<CicloEscolar[]>([]);
 const loadingList = ref(false);
 const loadingSave = ref(false);
@@ -99,13 +106,15 @@ const isEditing = ref(false);
 const editingId = ref<number | null>(null);
 const search = ref('');
 
-// para mostrar mensajes de éxito dentro de la tabla (toast interno)
-const tableSuccessMessage = ref<string | null>(null);
+
 
 // Modal formulario
 const showFormModal = ref(false);
 
 const addAnother = ref(false);
+
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<CicloEscolar | null>(null);
 
 // Formulario
 const form = ref<CicloEscolarPayload>({
@@ -175,7 +184,7 @@ async function loadCiclos() {
     ciclos.value = await getCiclosEscolares();
   } catch (e) {
     console.error(e);
-    error.value = 'Error al cargar los ciclos escolares';
+    toast.error('Error al cargar los ciclos escolares');
   } finally {
     loadingList.value = false;
   }
@@ -248,11 +257,11 @@ async function saveCiclo() {
       ciclos.value = ciclos.value.map((c) =>
         c.id_ciclo === saved.id_ciclo ? saved : c,
       );
-      tableSuccessMessage.value = 'Ciclo escolar actualizado correctamente';
+      toast.success('Ciclo escolar actualizado correctamente');
     } else {
       saved = await createCicloEscolar(payload);
       ciclos.value.push(saved);
-      tableSuccessMessage.value = 'Ciclo escolar creado correctamente';
+      toast.success('Ciclo escolar creado correctamente');
     }
 
     // Si se marcó como actual, actualizar el resto
@@ -271,7 +280,7 @@ async function saveCiclo() {
       e?.response?.data?.message ??
       e?.message ??
       'Error desconocido';
-    error.value = `No se pudo guardar el ciclo escolar: ${backendMsg}`;
+    toast.error(`No se pudo guardar el ciclo escolar: ${backendMsg}`);
   } finally {
     loadingSave.value = false;
   }
@@ -312,23 +321,32 @@ function onEdit(ciclo: CicloEscolar) {
 }
 
 // Eliminar desde la tabla
-async function onDelete(row: CicloEscolar) {
+function onDelete(row: CicloEscolar) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
+}
+
+async function onDeleteConfirm() {
+  const row = deleteTarget.value;
+  if (!row) return;
   const id = row.id_ciclo;
-  if (!confirm(`¿Eliminar el ciclo escolar #${id}?`)) return;
   try {
     await deleteCicloEscolar(id);
     ciclos.value = ciclos.value.filter((c) => c.id_ciclo !== id);
     if (editingId.value === id) {
       resetForm();
     }
-    tableSuccessMessage.value = 'Ciclo escolar eliminado correctamente';
+    toast.success('Ciclo escolar eliminado correctamente');
   } catch (e: any) {
     console.error(e);
     const backendMsg =
       e?.response?.data?.message ??
       e?.message ??
       'Error desconocido';
-    error.value = `No se pudo eliminar el ciclo escolar: ${backendMsg}`;
+    toast.error(`No se pudo eliminar el ciclo escolar: ${backendMsg}`);
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
   }
 }
 

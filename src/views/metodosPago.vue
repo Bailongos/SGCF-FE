@@ -30,11 +30,11 @@
     </header>
 
     <!-- Tabla genérica googlesca -->
-    <GoogleTable :rows="metodos" :columns="metodosColumns" rowKey="id_metodo" :loading="loadingList" :error="error"
+    <GoogleTable :rows="metodos" :columns="metodosColumns" rowKey="id_metodo" :loading="loadingList"
       v-model:search="search" title="Listado de métodos de pago"
       subtitle="Edita o elimina métodos existentes. Solo se recomienda eliminar métodos que no tengan movimientos asociados."
       icon="payments" :showReload="true" :useDefaultActions="true" :searchKeys="['nombre']"
-      :successMessage="tableSuccessMessage" emptyMessage="No hay métodos que coincidan con el filtro."
+      emptyMessage="No hay métodos que coincidan con el filtro."
       @reload="loadMetodos" @edit="onEdit" @delete="onDelete" />
 
     <!-- Modal Crear / Editar método -->
@@ -52,18 +52,24 @@
         <!-- Botones los maneja el footer del modal -->
       </form>
     </GoogleModal>
+
+    <ConfirmModal v-model="showDeleteConfirm" title="Eliminar método de pago"
+      :message="`¿Eliminar el método de pago #${deleteTarget?.id_metodo}?`" variant="danger" confirmText="Eliminar"
+      @confirm="onDeleteConfirm" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useToast } from '../composables/useToast';
 
 import GoogleButton from '../components/ui/button.vue';
 import GoogleInput from '../components/ui/input.vue';
 import GoogleModal from '../components/modal/modal.vue';
 import GoogleChip from '../components/ui/chip.vue';
 import GoogleTable, { type TableColumn } from '../components/ui/table.vue';
+import ConfirmModal from '../components/modal/ConfirmModal.vue';
 
 import {
   getMetodosPago,
@@ -74,6 +80,7 @@ import {
   type MetodoPagoPayload,
 } from '../services/metodo-pago';
 
+const toast = useToast();
 const metodos = ref<MetodoPago[]>([]);
 const loadingList = ref(false);
 const loadingSave = ref(false);
@@ -83,11 +90,13 @@ const isEditing = ref(false);
 const editingId = ref<number | null>(null);
 const search = ref('');
 
-// para mensajes de éxito dentro de la tabla (toast interno)
-const tableSuccessMessage = ref<string | null>(null);
+
 
 // Modal formulario
 const showFormModal = ref(false);
+
+const showDeleteConfirm = ref(false);
+const deleteTarget = ref<MetodoPago | null>(null);
 
 const form = ref<MetodoPagoPayload>({
   nombre: '',
@@ -115,7 +124,7 @@ async function loadMetodos() {
     metodos.value = await getMetodosPago();
   } catch (e) {
     console.error(e);
-    error.value = 'Error al cargar los métodos de pago';
+    toast.error('Error al cargar los métodos de pago');
   } finally {
     loadingList.value = false;
   }
@@ -139,7 +148,7 @@ async function saveMetodo() {
     };
 
     if (!payload.nombre) {
-      error.value = 'El nombre del método es obligatorio.';
+      toast.error('El nombre del método es obligatorio.');
       return;
     }
 
@@ -148,11 +157,11 @@ async function saveMetodo() {
       metodos.value = metodos.value.map((m) =>
         m.id_metodo === updated.id_metodo ? updated : m,
       );
-      tableSuccessMessage.value = 'Método de pago actualizado correctamente';
+      toast.success('Método de pago actualizado correctamente');
     } else {
       const created = await createMetodoPago(payload);
       metodos.value.push(created);
-      tableSuccessMessage.value = 'Método de pago creado correctamente';
+      toast.success('Método de pago creado correctamente');
     }
 
     resetForm();
@@ -162,7 +171,7 @@ async function saveMetodo() {
       e?.response?.data?.message ??
       e?.message ??
       'Error desconocido';
-    error.value = `No se pudo guardar el método de pago: ${backendMsg}`;
+    toast.error(`No se pudo guardar el método de pago: ${backendMsg}`);
   } finally {
     loadingSave.value = false;
   }
@@ -193,23 +202,32 @@ function onEdit(metodo: MetodoPago) {
 }
 
 // Eliminar desde la tabla
-async function onDelete(row: MetodoPago) {
+function onDelete(row: MetodoPago) {
+  deleteTarget.value = row;
+  showDeleteConfirm.value = true;
+}
+
+async function onDeleteConfirm() {
+  const row = deleteTarget.value;
+  if (!row) return;
   const id_metodo = row.id_metodo;
-  if (!confirm(`¿Eliminar el método de pago #${id_metodo}?`)) return;
   try {
     await deleteMetodoPago(id_metodo);
     metodos.value = metodos.value.filter((m) => m.id_metodo !== id_metodo);
     if (editingId.value === id_metodo) {
       resetForm();
     }
-    tableSuccessMessage.value = 'Método de pago eliminado correctamente';
+    toast.success('Método de pago eliminado correctamente');
   } catch (e: any) {
     console.error(e);
     const backendMsg =
       e?.response?.data?.message ??
       e?.message ??
       'Error desconocido';
-    error.value = `No se pudo eliminar el método de pago: ${backendMsg}`;
+    toast.error(`No se pudo eliminar el método de pago: ${backendMsg}`);
+  } finally {
+    showDeleteConfirm.value = false;
+    deleteTarget.value = null;
   }
 }
 

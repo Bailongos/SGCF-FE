@@ -12,11 +12,6 @@
       </div>
     </header>
 
-    <!-- Mensaje de error simple (viene por prop) -->
-    <p v-if="errorToShow" class="g-form-error">
-      {{ errorToShow }}
-    </p>
-
     <!-- Formulario -->
     <form @submit.prevent="handleSubmit" class="g-form-body">
       <div class="g-form-grid">
@@ -29,7 +24,7 @@
         <div class="g-form-actions-left">
           <!-- Slot opcional para personalizar acciones izquierdas -->
           <slot name="actions-left">
-            <GoogleButton v-if="showCancel" type="button" variant="text" color="#5f6368" @click="onCancelClick">
+            <GoogleButton v-if="showCancel" type="button" variant="text" @click="onCancelClick">
               {{ cancelLabelToShow }}
             </GoogleButton>
           </slot>
@@ -69,9 +64,6 @@ const props = defineProps<{
 
   // estado externo de "guardando"
   submitting?: boolean;
-
-  // mensaje de error externo (validaciones del padre)
-  errorMessage?: string;
 }>();
 
 const emit = defineEmits<{
@@ -108,10 +100,6 @@ const submitting = computed(
   () => props.submitting ?? false,
 );
 
-const errorToShow = computed(
-  () => props.errorMessage ?? '',
-);
-
 // Enviar
 function handleSubmit() {
   emit('submit');
@@ -146,25 +134,19 @@ function doCancel() {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 500;
-  color: #202124;
+  color: var(--md-sys-color-on-surface);
 }
 
 .g-form-subtitle {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
-  color: #5f6368;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .g-form-header-right {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-}
-
-.g-form-error {
-  font-size: 0.85rem;
-  color: #d93025;
-  margin-bottom: 0.25rem;
 }
 
 .g-form-body {

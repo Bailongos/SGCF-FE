@@ -58,10 +58,6 @@
       </label>
     </div>
 
-    <div v-if="error" class="form-error-box">
-      <span class="material-symbols-outlined">error</span>
-      {{ error }}
-    </div>
   </form>
 </template>
 
@@ -78,7 +74,6 @@ interface Props {
   isCoordinatorRole: boolean;
   isPendingFromCreateMode: boolean;
   careerHint: string;
-  error?: string | null;
 }
 
 defineProps<Props>();
@@ -110,17 +105,6 @@ const createModeOptions = [
   cursor: pointer;
   color: var(--md-sys-color-on-surface);
   padding-top: 1rem;
-}
-
-.form-error-box {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-on-error-container);
-  border-radius: 8px;
-  margin-top: 1rem;
 }
 
 @media (max-width: 900px) {
