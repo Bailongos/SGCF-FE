@@ -43,43 +43,13 @@ function readFirstNumberLike(source: any, keys: string[]): string | null {
   return null;
 }
 
-// Interceptor para añadir el token y x-user-id a cada petición
+// Interceptor para añadir el token a cada petición
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // El backend exige estos headers en todas las peticiones (según walkthrough)
-  let userId = '0';
-  let carreraId = '0';
-
-  const user = readUserFromStorage();
-  if (user) {
-    const userIdFromStorage = readFirstNumberLike(user, ['id_usuario', 'id', 'user_id']);
-    const careerFromStorage = readFirstNumberLike(user, ['id_carrera', 'carrera_id', 'idCarrera']);
-
-    if (userIdFromStorage) userId = userIdFromStorage;
-    if (careerFromStorage) carreraId = careerFromStorage;
-  }
-
-  if ((userId === '0' || carreraId === '0') && token) {
-    const tokenPayload = decodeJwtPayload(token);
-    if (tokenPayload) {
-      if (userId === '0') {
-        const userIdFromToken = readFirstNumberLike(tokenPayload, ['id_usuario', 'id', 'userId', 'sub']);
-        if (userIdFromToken) userId = userIdFromToken;
-      }
-
-      if (carreraId === '0') {
-        const careerFromToken = readFirstNumberLike(tokenPayload, ['id_carrera', 'carrera_id', 'careerId']);
-        if (careerFromToken) carreraId = careerFromToken;
-      }
-    }
-  }
-
-  config.headers['x-user-id'] = userId;
-  config.headers['x-user-carrera'] = carreraId;
   
   return config;
 });

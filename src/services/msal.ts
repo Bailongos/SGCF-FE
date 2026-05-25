@@ -14,14 +14,14 @@ import {
  * CONFIGURACIÓN DE MSAL (M Microsoft Authentication Library)
  * Sigue las mejores prácticas para aplicaciones de página única (SPA).
  */
-const clientId = import.meta.env.VITE_MS_CLIENT_ID || '';
-const tenantId = import.meta.env.VITE_MS_TENANT_ID || '';
+const clientId = import.meta.env.VITE_MSAL_CLIENT_ID || '';
+const tenantId = import.meta.env.VITE_MSAL_TENANT_ID || '';
 
 export const msalConfig: Configuration = {
   auth: {
     clientId: clientId,
     authority: `https://login.microsoftonline.com/${tenantId}`,
-    redirectUri: window.location.origin + '/',
+    redirectUri: window.location.origin + '/login',
     postLogoutRedirectUri: window.location.origin + '/',
   },
   cache: {

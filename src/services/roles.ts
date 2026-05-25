@@ -34,3 +34,37 @@ export async function updateRol(
 export async function deleteRol(id_rol: number): Promise<void> {
   await api.delete(`${BASE_PATH}/${id_rol}`);
 }
+
+export interface Permiso {
+  id_permiso: number;
+  clave: string;
+  descripcion: string;
+  categoria: string;
+}
+
+export interface RolPermiso {
+  id_rol: number;
+  id_permiso: number;
+}
+
+export interface RolesPermisosData {
+  roles: Rol[];
+  permisos: Permiso[];
+  rol_permisos: RolPermiso[];
+}
+
+export async function getRolesPermisos(): Promise<RolesPermisosData> {
+  const { data } = await api.get<RolesPermisosData>('/admin/roles-permisos');
+  return data;
+}
+
+export async function updateRolesPermisos(
+  id_rol: number,
+  id_permisos: number[],
+): Promise<{ success: boolean }> {
+  const { data } = await api.post<{ success: boolean }>('/admin/roles-permisos', {
+    id_rol,
+    id_permisos,
+  });
+  return data;
+}
