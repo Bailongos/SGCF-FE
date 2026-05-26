@@ -6,11 +6,11 @@ const mockIsAxiosError = vi.fn();
 
 vi.mock('axios', () => ({
   default: {
-    post: (...args: any[]) => mockPost(...args),
+    post: (..._args: any[]) => mockPost(..._args),
     isAxiosError: (error: any) => mockIsAxiosError(error),
   },
   AxiosError: class extends Error {
-    constructor(msg: string, ...args: any[]) {
+    constructor(msg: string, ..._args: any[]) {
       super(msg);
     }
   },
@@ -57,7 +57,7 @@ describe('loginWithMicrosoftROPC', () => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
     );
 
-    const params = mockPost.mock.calls[0][1] as URLSearchParams;
+    const params = mockPost.mock.calls[0]![1] as URLSearchParams;
     expect(params.get('client_id')).toBe(clientId);
     expect(params.get('grant_type')).toBe('password');
     expect(params.get('username')).toBe(username);
@@ -72,7 +72,7 @@ describe('loginWithMicrosoftROPC', () => {
 
     await loginWithMicrosoftROPC(tenant, clientId, username, password, 'openid', 'secret');
 
-    const params = mockPost.mock.calls[0][1] as URLSearchParams;
+    const params = mockPost.mock.calls[0]![1] as URLSearchParams;
     expect(params.get('client_secret')).toBe('secret');
   });
 

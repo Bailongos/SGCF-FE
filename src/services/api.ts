@@ -5,44 +5,6 @@ export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-function readUserFromStorage(): any | null {
-  const savedUser = localStorage.getItem('user');
-  if (!savedUser) return null;
-
-  try {
-    const parsed = JSON.parse(savedUser);
-    return parsed?.user ?? parsed?.usuario ?? parsed ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    const decoded = atob(padded);
-    return JSON.parse(decoded);
-  } catch {
-    return null;
-  }
-}
-
-function readFirstNumberLike(source: any, keys: string[]): string | null {
-  for (const key of keys) {
-    const value = source?.[key];
-    if (value === null || value === undefined || value === '') continue;
-
-    const num = Number(value);
-    if (!Number.isNaN(num)) return String(num);
-  }
-
-  return null;
-}
-
 // Interceptor para añadir el token a cada petición
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');

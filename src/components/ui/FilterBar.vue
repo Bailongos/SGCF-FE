@@ -43,6 +43,7 @@ withDefaults(defineProps<{
   activeCount?: number;
   compact?: boolean;
 }>(), {
+  activeCount: 0,
   compact: false,
 });
 

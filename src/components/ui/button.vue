@@ -27,7 +27,7 @@
 import { computed } from 'vue';
 
 type Size = 'sm' | 'md' | 'lg';
-type Variant = 'filled' | 'text' | 'outlined';
+type Variant = 'filled' | 'text' | 'outlined' | 'tonal';
 type NativeButtonType = 'button' | 'submit' | 'reset';
 
 const props = defineProps<{

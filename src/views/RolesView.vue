@@ -203,8 +203,9 @@ const activePermCount = computed(() => selectedPermissions.value.size);
 const usersByRole = computed(() => {
   const map: Record<number, Usuario[]> = {};
   for (const user of usuarios.value) {
-    if (!map[user.id_rol]) map[user.id_rol] = [];
-    map[user.id_rol].push(user);
+    const rol = user.id_rol ?? 0;
+    if (!map[rol]) map[rol] = [];
+    map[rol].push(user);
   }
   return map;
 });

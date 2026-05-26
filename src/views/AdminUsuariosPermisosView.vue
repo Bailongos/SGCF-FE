@@ -296,7 +296,7 @@ const careerSelectOptions = computed(() => [
   { value: '', label: 'Todas las carreras' },
   ...careerOptions.value,
 ]);
-const careerFilterOptions = computed(() => carreras.value.map((career) => ({ value: career.id_carrera, label: formatCarreraLabel(career) })));
+// const careerFilterOptions = computed(() => carreras.value.map((career) => ({ value: career.id_carrera, label: formatCarreraLabel(career) })));
 const statusOptions = [
   { value: '', label: 'Todos' },
   { value: 'activo', label: 'Activo' },

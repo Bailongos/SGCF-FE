@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
-const mockAuthStore = {
+const mockAuthStore: Record<string, any> = {
   user: null,
   token: null,
   isAuthenticated: false,

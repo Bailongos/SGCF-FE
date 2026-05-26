@@ -40,7 +40,7 @@ describe('Modal component', () => {
   });
 
   it('is visible when modelValue is true', () => {
-    const wrapper = mountModal();
+    mountModal();
     expect(document.querySelector('.g-modal-overlay')).toBeTruthy();
   });
 

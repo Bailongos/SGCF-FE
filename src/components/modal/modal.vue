@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, useSlots } from 'vue';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
 
 import SectionCard from '../layout/sideCard.vue';
 import GoogleButton from '../ui/button.vue';
@@ -91,7 +91,7 @@ const emit = defineEmits<{
   (e: 'cancel'): void;
 }>();
 
-const slots = useSlots();
+// const slots = useSlots();
 
 const visible = computed({
   get: () => props.modelValue,

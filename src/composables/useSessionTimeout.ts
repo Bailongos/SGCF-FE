@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onUnmounted, watch } from 'vue';
 
 const INACTIVITY_MS = 30 * 60 * 1000;
 
@@ -36,7 +36,7 @@ export function useSessionTimeout(active: boolean, onExpire: () => void) {
     events.forEach((e) => document.removeEventListener(e, handler));
   }
 
-  watch(active, (val) => {
+  watch(() => active, (val) => {
     if (val) start();
     else stop();
   }, { immediate: true });

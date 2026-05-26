@@ -61,7 +61,7 @@ describe('Button component', () => {
 
     await wrapper.find('button').trigger('click');
     expect(wrapper.emitted('click')).toBeTruthy();
-    expect(wrapper.emitted('click')![0][0]).toBeInstanceOf(MouseEvent);
+    expect(wrapper.emitted('click')![0]![0]).toBeInstanceOf(MouseEvent);
   });
 
   it('does not emit click when disabled', async () => {
