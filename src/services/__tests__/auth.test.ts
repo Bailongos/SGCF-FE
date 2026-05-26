@@ -55,4 +55,34 @@ describe('auth service', () => {
     expect(api.post).toHaveBeenCalledWith('/auth/register', payload);
     expect(result).toEqual(mockResponse.data);
   });
+
+  describe('error handling', () => {
+    it('login throws on 401', async () => {
+      const error = { response: { status: 401, data: { message: 'Credenciales inválidas' } }, isAxiosError: true };
+      (api.post as any).mockRejectedValue(error);
+
+      await expect(login('user', 'wrong')).rejects.toEqual(error);
+    });
+
+    it('login throws on network error', async () => {
+      const error = new Error('Network Error');
+      (api.post as any).mockRejectedValue(error);
+
+      await expect(login('user', 'pass')).rejects.toThrow('Network Error');
+    });
+
+    it('login throws on server error', async () => {
+      const error = { response: { status: 500, data: { message: 'Server error' } }, isAxiosError: true };
+      (api.post as any).mockRejectedValue(error);
+
+      await expect(login('user', 'pass')).rejects.toEqual(error);
+    });
+
+    it('loginWithMicrosoft throws on error', async () => {
+      const error = { response: { status: 400, data: { message: 'Bad request' } }, isAxiosError: true };
+      (api.post as any).mockRejectedValue(error);
+
+      await expect(loginWithMicrosoft({ id_token: 'bad' })).rejects.toEqual(error);
+    });
+  });
 });

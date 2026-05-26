@@ -53,4 +53,24 @@ describe('metodo-pago service', () => {
 
     expect(api.delete).toHaveBeenCalledWith('/metodos-pago/1');
   });
+
+  describe('error handling', () => {
+    it('throws on 404', async () => {
+      const error = { response: { status: 404 }, isAxiosError: true };
+      (api.get as any).mockRejectedValue(error);
+      await expect(getMetodosPago()).rejects.toEqual(error);
+    });
+
+    it('throws on 500', async () => {
+      const error = { response: { status: 500 }, isAxiosError: true };
+      (api.get as any).mockRejectedValue(error);
+      await expect(getMetodosPago()).rejects.toEqual(error);
+    });
+
+    it('throws on network error', async () => {
+      const error = new Error('Network Error');
+      (api.get as any).mockRejectedValue(error);
+      await expect(getMetodosPago()).rejects.toThrow('Network Error');
+    });
+  });
 });

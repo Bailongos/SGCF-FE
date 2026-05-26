@@ -1,0 +1,48 @@
+# 🟡 CI/CD desactivado temporalmente
+# Para activarlo, cambia 'never-run' por 'main' o 'develop' en branches
+# name: Test Suite
+# 
+# on:
+#   push:
+#     branches: [never-run]
+#   pull_request:
+#     branches: [never-run]
+# 
+# jobs:
+#   unit:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: 20
+#           cache: 'npm'
+#       - run: npm ci
+#       - run: npm test
+#       - run: npm run test:coverage
+#       - uses: dorny/test-reporter@v1
+#         if: success() || failure()
+#         with:
+#           name: Unit Tests
+#           path: test-results/**/*.xml
+#           reporter: vitest
+# 
+#   e2e:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: 20
+#           cache: 'npm'
+#       - run: npm ci
+#       - name: Install Playwright
+#         run: npx playwright install --with-deps chromium
+#       - name: Run E2E tests
+#         run: npx playwright test
+#       - uses: actions/upload-artifact@v4
+#         if: success() || failure()
+#         with:
+#           name: playwright-report
+#           path: playwright-report/
+#           retention-days: 30

@@ -53,4 +53,24 @@ describe('usuarios service', () => {
 
     expect(api.delete).toHaveBeenCalledWith('/usuarios/1');
   });
+
+  describe('error handling', () => {
+    it('throws on 404', async () => {
+      const error = { response: { status: 404 }, isAxiosError: true };
+      (api.get as any).mockRejectedValue(error);
+      await expect(getUsuarios()).rejects.toEqual(error);
+    });
+
+    it('throws on 500', async () => {
+      const error = { response: { status: 500 }, isAxiosError: true };
+      (api.post as any).mockRejectedValue(error);
+      await expect(createUsuario({ username: 'x', password: 'p', id_rol: 2 })).rejects.toEqual(error);
+    });
+
+    it('throws on network error', async () => {
+      const error = new Error('Network Error');
+      (api.get as any).mockRejectedValue(error);
+      await expect(getUsuarios()).rejects.toThrow('Network Error');
+    });
+  });
 });

@@ -53,4 +53,35 @@ describe('conceptos service', () => {
 
     expect(api.delete).toHaveBeenCalledWith('/conceptos/INSCRIPCION');
   });
+
+  it('encodes special characters in clave for update and delete', async () => {
+    (api.put as any).mockResolvedValue({ data: {} });
+    (api.delete as any).mockResolvedValue({});
+
+    await updateConcepto('CLAVE/1', { clave: 'CLAVE/1', descripcion: 'test', monto_default: 0, genera_cuenta_default: false });
+    await deleteConcepto('CLAVE CON ESPACIOS');
+
+    expect(api.put).toHaveBeenCalledWith('/conceptos/CLAVE%2F1', expect.anything());
+    expect(api.delete).toHaveBeenCalledWith('/conceptos/CLAVE%20CON%20ESPACIOS');
+  });
+
+  describe('error handling', () => {
+    it('throws on 404', async () => {
+      const error = { response: { status: 404 }, isAxiosError: true };
+      (api.get as any).mockRejectedValue(error);
+      await expect(getConceptos()).rejects.toEqual(error);
+    });
+
+    it('throws on 500', async () => {
+      const error = { response: { status: 500 }, isAxiosError: true };
+      (api.get as any).mockRejectedValue(error);
+      await expect(getConceptos()).rejects.toEqual(error);
+    });
+
+    it('throws on network error', async () => {
+      const error = new Error('Network Error');
+      (api.get as any).mockRejectedValue(error);
+      await expect(getConceptos()).rejects.toThrow('Network Error');
+    });
+  });
 });

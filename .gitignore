@@ -26,4 +26,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
-.env
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
