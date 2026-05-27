@@ -161,16 +161,18 @@ const carreraOptions = computed<SelectOption[]>(() => {
 // Lógica de restricción de carrera por rol
 const shouldDisableCareer = computed(() => {
   const selectedRol = roles.value.find(r => r.id_rol === form.value.id_rol);
+  const roleNameLower = selectedRol?.nombre_rol ? String(selectedRol.nombre_rol).toLowerCase() : '';
   // Si es Administrador, forzamos Global (NULL)
-  return selectedRol?.nombre_rol === 'Administrador';
+  return roleNameLower === 'administrador';
 });
 
 const careerHint = computed(() => {
   const selectedRol = roles.value.find(r => r.id_rol === form.value.id_rol);
-  if (selectedRol?.nombre_rol === 'Administrador') {
+  const roleNameLower = selectedRol?.nombre_rol ? String(selectedRol.nombre_rol).toLowerCase() : '';
+  if (roleNameLower === 'administrador') {
     return 'Administradores siempre tienen acceso global.';
   }
-  if (selectedRol?.nombre_rol === 'Coordinador') {
+  if (roleNameLower === 'coordinador') {
     return 'Debes asignar una carrera específica.';
   }
   return '';
@@ -178,7 +180,8 @@ const careerHint = computed(() => {
 
 function handleRolChange(val: any) {
   const selectedRol = roles.value.find(r => r.id_rol === val);
-  if (selectedRol?.nombre_rol === 'Administrador') {
+  const roleNameLower = selectedRol?.nombre_rol ? String(selectedRol.nombre_rol).toLowerCase() : '';
+  if (roleNameLower === 'administrador') {
     form.value.id_carrera = null;
   }
 }

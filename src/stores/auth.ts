@@ -19,6 +19,7 @@ interface AuthUser {
   activo?: boolean;
   estado?: string | null;
   permissions?: string[]; // Permisos devueltos por el backend
+  avatar?: string | null;
 }
 
 function normalizeRoleName(role: string | null | undefined): string {
@@ -172,12 +173,16 @@ export const useAuthStore = defineStore('auth', () => {
     return allowed.includes(currentRole.value);
   }
 
-  function setSession(data: LoginResponse) {
+  function setSession(data: LoginResponse, extraUser?: Partial<AuthUser>) {
     const sessionToken = String((data as any)?.token ?? (data as any)?.access_token ?? '').trim();
     const sessionUser = ((data as any)?.user ?? (data as any)?.usuario) as AuthUser | null;
 
     if (!sessionToken || !sessionUser) {
       throw new Error('La respuesta de autenticacion no contiene token o usuario.');
+    }
+
+    if (extraUser) {
+      Object.assign(sessionUser, extraUser);
     }
 
     token.value = sessionToken;
@@ -191,14 +196,14 @@ export const useAuthStore = defineStore('auth', () => {
     setSession(data);
   }
 
-  async function loginWithGoogle(idToken: string) {
+  async function loginWithGoogle(idToken: string, avatarUrl?: string | null) {
     const data = await loginWithGoogleApi(idToken);
-    setSession(data);
+    setSession(data, avatarUrl ? { avatar: avatarUrl } : undefined);
   }
 
-  async function loginWithMicrosoft(payload: { id_token?: string; code?: string }) {
+  async function loginWithMicrosoft(payload: { id_token?: string; code?: string; foto_url?: string | null }, avatarUrl?: string | null) {
     const data = await loginWithMicrosoftApi(payload);
-    setSession(data);
+    setSession(data, avatarUrl ? { avatar: avatarUrl } : undefined);
   }
 
 

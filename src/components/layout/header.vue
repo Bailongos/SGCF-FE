@@ -17,7 +17,8 @@
         <div class="profile-container" ref="profileRef">
           <button @click="toggleMenu" class="profile-trigger" :class="{ 'profile-active': isMenuOpen }">
             <div class="profile-avatar">
-              {{ auth.user?.username?.charAt(0).toUpperCase() }}
+              <img v-if="auth.user?.avatar" :src="auth.user.avatar" alt="" class="avatar-img" />
+              <span v-else>{{ auth.user?.username?.charAt(0).toUpperCase() }}</span>
             </div>
             <div class="profile-info">
               <span class="profile-name">{{ auth.user?.username }}</span>
@@ -30,7 +31,8 @@
             <div v-if="isMenuOpen" class="profile-dropdown">
               <div class="dropdown-header">
                 <div class="large-avatar">
-                  {{ auth.user?.username?.charAt(0).toUpperCase() }}
+                  <img v-if="auth.user?.avatar" :src="auth.user.avatar" alt="" class="avatar-img" />
+                  <span v-else>{{ auth.user?.username?.charAt(0).toUpperCase() }}</span>
                 </div>
                 <div class="user-details">
                   <span class="full-name">{{ auth.user?.username }}</span>
@@ -293,6 +295,14 @@ const handleLogout = () => {
   justify-content: center;
   font-size: 1.5rem;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .full-name {

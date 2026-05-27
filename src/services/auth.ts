@@ -11,6 +11,7 @@ export interface AuthUserResponse {
   activo?: boolean;
   estado?: string | null;
   permissions?: string[]; // Permisos retornados por el backend
+  avatar?: string | null; // URL de la foto de perfil
 }
 
 export interface LoginResponse {
@@ -59,6 +60,7 @@ export async function loginWithGoogle(id_token: string): Promise<LoginResponse> 
 export async function loginWithMicrosoft(payload: {
   id_token?: string;
   code?: string;
+  foto_url?: string | null;
 }): Promise<LoginResponse> {
   const { data } = await api.post<LoginResponse>('/auth/microsoft', payload);
   return data;

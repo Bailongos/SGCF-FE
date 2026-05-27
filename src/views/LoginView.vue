@@ -95,6 +95,15 @@ const googleClientId = String(import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '').trim(
 
 let googleInitialized = false;
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 function parseAuthError(err: unknown, fallback: string): string {
   const response = (err as any)?.response;
   const data = response?.data;
@@ -224,11 +233,30 @@ function handleGoogleCredential(response: { credential?: string }) {
     return;
   }
 
+  let avatarUrl: string | null = null;
+  try {
+    const base64Url = idToken.split('.')[1] || '';
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padLen = (4 - (base64.length % 4)) % 4;
+    const paddedBase64 = base64 + '='.repeat(padLen);
+    const jsonPayload = decodeURIComponent(
+      atob(paddedBase64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonPayload);
+    avatarUrl = payload.picture || null;
+    console.log('[Auth] Avatar extraído de Google:', avatarUrl ? 'Sí' : 'No');
+  } catch (e) {
+    console.warn('[Auth] No se pudo decodificar el JWT de Google para extraer el avatar:', e);
+  }
+
   console.log('[Auth] Iniciando llamada al backend...');
   loadingGoogle.value = true;
   void (async () => {
     try {
-      await auth.loginWithGoogle(idToken);
+      await auth.loginWithGoogle(idToken, avatarUrl);
       console.log('[Auth] Éxito. Redirigiendo a /inicio');
       router.push('/dashboard-alumnos');
     } catch (err) {
@@ -250,7 +278,24 @@ async function startMicrosoftLogin() {
       throw new Error('No se recibió un idToken válido de Microsoft.');
     }
 
-    await auth.loginWithMicrosoft({ id_token: idToken });
+    // Intentar obtener la foto de perfil desde Microsoft Graph API
+    let avatarUrl: string | null = null;
+    if (result.accessToken) {
+      try {
+        const response = await fetch('https://graph.microsoft.com/v1.0/me/photo/$value', {
+          headers: { Authorization: `Bearer ${result.accessToken}` },
+        });
+        if (response.ok) {
+          const blob = await response.blob();
+          avatarUrl = await blobToDataUrl(blob);
+          console.log('[Auth] Foto de perfil obtenida de Microsoft Graph.');
+        }
+      } catch {
+        console.warn('[Auth] No se pudo obtener la foto de perfil de Microsoft Graph.');
+      }
+    }
+
+    await auth.loginWithMicrosoft({ id_token: idToken, foto_url: avatarUrl }, avatarUrl);
     router.push('/dashboard-alumnos');
   } catch (err: any) {
     if (err.name === 'BrowserAuthError' && err.errorCode === 'user_cancelled') {
