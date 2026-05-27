@@ -188,12 +188,17 @@ async function ensureGoogleIdentityReady() {
     
     const googleBtnDiv = document.getElementById('googleSignInDiv');
     if (googleBtnDiv) {
+      const isDark = document.documentElement.classList.contains('dark');
+      // Medimos el ancho del contenedor para que sea 100% responsivo y alineado
+      const containerWidth = googleBtnDiv.clientWidth || 356;
+      
       win.google.accounts.id.renderButton(googleBtnDiv, {
-        theme: 'outline',
+        theme: isDark ? 'filled_black' : 'outline',
         size: 'large',
         text: 'continue_with',
         shape: 'rectangular',
         logo_alignment: 'left',
+        width: Math.min(Math.max(containerWidth, 200), 400),
       });
 
       const googleBtnInner = googleBtnDiv.querySelector('div');
@@ -534,7 +539,7 @@ onMounted(() => {
 .sso-btn-google :deep(div[role="button"]),
 .sso-btn-google > div > div {
   width: 100% !important;
-  border-radius: 8px !important;
+  border-radius: 4px !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease !important;
 }
 
@@ -546,9 +551,9 @@ onMounted(() => {
 .sso-btn {
   width: 100%;
   justify-content: center;
-  height: 44px;
+  height: 40px;
   font-size: 0.88rem;
-  border-radius: 8px;
+  border-radius: 4px;
   transition: all 0.2s ease;
 }
 
