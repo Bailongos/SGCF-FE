@@ -4,7 +4,7 @@
     <header class="hub-header">
       <div class="header-content">
         <div class="header-logo">
-          <img src="@/assets/Logotipo-UADEC-vertical.webp" alt="UAdeC" class="logo-img" />
+          <img src="../assets/Logotipo-UADEC-vertical.webp" alt="UAdeC" class="logo-img" />
         </div>
         <div class="header-text-group">
           <h1 class="hub-title">Centro de Módulos</h1>
