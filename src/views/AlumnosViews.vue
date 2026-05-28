@@ -574,6 +574,29 @@ async function onBulkFileChange(event: Event) {
 
     const json = XLSX.utils.sheet_to_json<any>(worksheet, { defval: '' });
 
+    const getRowValue = (row: any, possibleKeys: string[]): any => {
+      const rowKeys = Object.keys(row);
+      for (const k of rowKeys) {
+        const normalizedKey = k.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+        for (const pk of possibleKeys) {
+          const normalizedPk = pk.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+          if (normalizedKey === normalizedPk) {
+            return row[k];
+          }
+        }
+      }
+      for (const k of rowKeys) {
+        const normalizedKey = k.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+        for (const pk of possibleKeys) {
+          const normalizedPk = pk.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+          if (normalizedKey.includes(normalizedPk) || normalizedPk.includes(normalizedKey)) {
+            return row[k];
+          }
+        }
+      }
+      return undefined;
+    };
+
     type MappedRow = {
       matricula: string;
       nombre_completo: string;
@@ -586,24 +609,23 @@ async function onBulkFileChange(event: Event) {
     };
 
     const mapped: MappedRow[] = json.map((row, index) => {
-      const matricula = String(row.matricula ?? row.Matricula ?? '').trim();
-      const nombre_completo = String(row.nombre_completo ?? row.Nombre ?? '').trim();
+      const matricula = String(getRowValue(row, ['matricula', 'control', 'id']) ?? '').trim();
+      const nombre_completo = String(getRowValue(row, ['nombre_completo', 'nombre', 'nombres', 'name']) ?? '').trim();
       const email_institucional = String(
-        row.email_institucional ?? row.Email ?? '',
+        getRowValue(row, ['email_institucional', 'email', 'correo', 'mail']) ?? '',
       ).trim();
       const telefono_contacto = String(
-        row.telefono_contacto ?? row.Telefono ?? '',
+        getRowValue(row, ['telefono_contacto', 'telefono', 'celular', 'phone']) ?? '',
       ).trim();
-      const id_carrera = Number(
-        row.id_carrera ?? row.IdCarrera ?? row.carrera_id ?? 0,
-      );
-      const semestre_actual = Number(
-        row.semestre_actual ?? row.Semestre ?? 1,
-      );
+      const id_carrera_val = getRowValue(row, ['id_carrera', 'carrera', 'plan', 'carrera_id', 'plan_id']);
+      const id_carrera = id_carrera_val !== undefined && id_carrera_val !== '' ? Number(id_carrera_val) : 0;
+      const semestre_val = getRowValue(row, ['semestre_actual', 'semestre', 'grado']);
+      const semestre_actual = semestre_val !== undefined && semestre_val !== '' ? Number(semestre_val) : 1;
+      const activo_val = getRowValue(row, ['activo', 'estado', 'status']);
       const activo =
-        row.activo === '' || row.activo === undefined
+        activo_val === '' || activo_val === undefined
           ? true
-          : Boolean(row.activo);
+          : (String(activo_val).toLowerCase() === 'true' || String(activo_val) === '1' || activo_val === true);
 
       return {
         matricula,

@@ -487,20 +487,104 @@ function onBulkFileChange(event: any) {
   if (!file) return;
   bulkFileName.value = file.name;
   bulkParsing.value = true;
+  bulkErrors.value = [];
+  bulkRows.value = [];
+
   const reader = new FileReader();
   reader.onload = (e: any) => {
     const text = e.target?.result as string;
     if (text) {
       const lines = text.split('\n').filter(l => l.trim());
       if (lines.length > 0) {
-        const header = lines[0]!.split(',');
-        const data = lines.slice(1).map(line => {
+        const header = lines[0]!.split(',').map(h => h.trim());
+
+        const getRowValue = (row: any, possibleKeys: string[]): any => {
+          const rowKeys = Object.keys(row);
+          for (const k of rowKeys) {
+            const normalizedKey = k.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+            for (const pk of possibleKeys) {
+              const normalizedPk = pk.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+              if (normalizedKey === normalizedPk) {
+                return row[k];
+              }
+            }
+          }
+          for (const k of rowKeys) {
+            const normalizedKey = k.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+            for (const pk of possibleKeys) {
+              const normalizedPk = pk.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\s_-]/g, "");
+              if (normalizedKey.includes(normalizedPk) || normalizedPk.includes(normalizedKey)) {
+                return row[k];
+              }
+            }
+          }
+          return undefined;
+        };
+
+        const rawData = lines.slice(1).map((line, lineIndex) => {
           const parts = line.split(',');
           const obj: any = {};
-          header.forEach((h, i) => obj[h.trim()] = parts[i]?.trim());
-          return obj;
+          header.forEach((h, i) => obj[h] = parts[i]?.trim());
+          return { obj, _rowIndex: lineIndex + 2 };
         });
-        bulkRows.value = data;
+
+        const seenMatriculas = new Set<string>();
+        const existingMatriculas = new Set(alumnos.value.map(a => a.matricula));
+        const validRows: any[] = [];
+
+        for (const { obj, _rowIndex } of rawData) {
+          const matricula = String(getRowValue(obj, ['matricula', 'control', 'id']) ?? '').trim();
+          const nombre_completo = String(getRowValue(obj, ['nombre_completo', 'nombre', 'nombres', 'name']) ?? '').trim();
+          const email_institucional = String(
+            getRowValue(obj, ['email_institucional', 'email', 'correo', 'mail']) ?? '',
+          ).trim();
+          const telefono_contacto = String(
+            getRowValue(obj, ['telefono_contacto', 'telefono', 'celular', 'phone']) ?? '',
+          ).trim();
+          const id_carrera_val = getRowValue(obj, ['id_carrera', 'carrera', 'plan', 'carrera_id', 'plan_id']);
+          const id_carrera = id_carrera_val !== undefined && id_carrera_val !== '' ? Number(id_carrera_val) : 0;
+          const semestre_val = getRowValue(obj, ['semestre_actual', 'semestre', 'grado']);
+          const semestre_actual = semestre_val !== undefined && semestre_val !== '' ? Number(semestre_val) : 1;
+          const activo_val = getRowValue(obj, ['activo', 'estado', 'status']);
+          const activo =
+            activo_val === '' || activo_val === undefined
+              ? true
+              : (String(activo_val).toLowerCase() === 'true' || String(activo_val) === '1' || activo_val === true);
+
+          if (!matricula || !nombre_completo || !id_carrera) {
+            bulkErrors.value.push(
+              `Fila ${_rowIndex}: faltan datos obligatorios (matricula, nombre_completo o id_carrera).`,
+            );
+            continue;
+          }
+
+          if (seenMatriculas.has(matricula)) {
+            bulkErrors.value.push(
+              `Fila ${_rowIndex}: matrícula duplicada en el archivo (${matricula}).`,
+            );
+            continue;
+          }
+
+          if (existingMatriculas.has(matricula)) {
+            bulkErrors.value.push(
+              `Fila ${_rowIndex}: la matrícula ya existe en el sistema (${matricula}).`,
+            );
+            continue;
+          }
+
+          seenMatriculas.add(matricula);
+          validRows.push({
+            matricula,
+            nombre_completo,
+            email_institucional,
+            telefono_contacto,
+            id_carrera,
+            semestre_actual,
+            activo
+          });
+        }
+
+        bulkRows.value = validRows;
       }
       bulkParsing.value = false;
     }
